@@ -52,5 +52,10 @@ svg path.pentest-tree-link--locked {
 svg path.pentest-tree-link--completed {
   stroke: rgba(0,255,136,0.5);
 }
+svg path.pentest-tree-link--compromised {
+  stroke: rgba(255,51,102,0.9);
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 6px rgba(255,51,102,0.6));
+}
 /* Hide default circle nodes */
 svg .rd3t-node circle, svg .rd3t-leaf-node circle { display: none; }

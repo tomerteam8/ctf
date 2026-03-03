@@ -21,7 +21,8 @@ interface GameState {
   pendingPromptText: string;
   difficulty: Difficulty;
   nodeFailures: Record<string, number>;
-  capturedFlag: string | null;
+  capturedFlag: { id: string; value: string } | null;
+  capturedFlags: string[];
 
   selectNode: (id: string | null) => void;
   executePrompt: (nodeId: string, prompt: string) => Promise<void>;
@@ -51,6 +52,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   difficulty: (localStorage.getItem('peter-difficulty') as Difficulty) || 'normal',
   nodeFailures: {},
   capturedFlag: null,
+  capturedFlags: [],
 
   selectNode: (id) => set({ selectedNodeId: id }),
 
@@ -214,9 +216,16 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
 
         // Check for flag triggers
-        const flag = llmResponse.success && matchedAction?.id === 'sqli_user_type'
-          ? 'FLAG{employee_discount_privilege_escalation}'
+        const flagMap: Record<string, { id: string; value: string }> = {
+          sqli_user_type: { id: 'sqli_user_type', value: 'FLAG{employee_discount_privilege_escalation}' },
+          ping_command_injection: { id: 'ping_command_injection', value: 'FLAG{complete_takeover_reverse_shell}' },
+        };
+        const flag = llmResponse.success && matchedAction?.id && flagMap[matchedAction.id]
+          ? flagMap[matchedAction.id]
           : null;
+        const capturedFlags = flag && !s.capturedFlags.includes(flag.id)
+          ? [...s.capturedFlags, flag.id]
+          : s.capturedFlags;
 
         return {
           nodes,
@@ -224,6 +233,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           executingAction: false,
           nodeFailures,
           capturedFlag: flag ?? s.capturedFlag,
+          capturedFlags,
           promptHistory: { ...s.promptHistory, [nodeId]: historyWithResponse },
           actionResult: {
             success: llmResponse.success,

@@ -1,13 +1,28 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
 
+const flagContent: Record<string, { emoji: string; title: string; description: string }> = {
+  sqli_user_type: {
+    emoji: '🚩',
+    title: 'Flag Captured',
+    description: 'You exploited a SQL injection in the password change endpoint to escalate your account to employee status, unlocking staff discounts and enabling near-free purchases on the platform.',
+  },
+  ping_command_injection: {
+    emoji: '💀',
+    title: 'Complete Takeover',
+    description: 'You chained account registration, SQL injection privilege escalation, SSRF into the internal network, and command injection on the ping diagnostic service to spawn a reverse shell. You now have full remote code execution on the internal server — complete takeover achieved. Congratulations!',
+  },
+};
+
 export default function FlagModal() {
   const capturedFlag = useGameStore((s) => s.capturedFlag);
   const clearFlag = useGameStore((s) => s.clearFlag);
 
+  const content = capturedFlag ? flagContent[capturedFlag.id] : null;
+
   return (
     <AnimatePresence>
-      {capturedFlag && (
+      {capturedFlag && content && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -42,7 +57,7 @@ export default function FlagModal() {
               transition={{ delay: 0.2, type: 'spring' }}
               style={{ fontSize: 72, marginBottom: 16 }}
             >
-              🚩
+              {content.emoji}
             </motion.div>
 
             <motion.h2
@@ -58,7 +73,7 @@ export default function FlagModal() {
                 marginBottom: 8,
               }}
             >
-              Flag Captured
+              {content.title}
             </motion.h2>
 
             <motion.p
@@ -72,7 +87,7 @@ export default function FlagModal() {
                 lineHeight: 1.6,
               }}
             >
-              You exploited a SQL injection in the password change endpoint to escalate your account to employee status, unlocking staff discounts and enabling near-free purchases on the platform.
+              {content.description}
             </motion.p>
 
             <motion.div
@@ -93,7 +108,7 @@ export default function FlagModal() {
                 marginBottom: 24,
               }}
             >
-              {capturedFlag}
+              {capturedFlag.value}
             </motion.div>
 
             <motion.button

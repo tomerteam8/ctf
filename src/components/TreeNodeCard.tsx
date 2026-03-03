@@ -7,11 +7,12 @@ const typeIcons: Record<string, string> = {
 };
 
 const dotColor = (status: string) =>
-  status === 'locked' ? '#ff3366' : status === 'available' ? '#00f0ff' : '#00ff88';
+  status === 'compromised' ? '#ff3366' : status === 'locked' ? '#ff3366' : status === 'available' ? '#00f0ff' : '#00ff88';
 
 function borderAndBg(status: string) {
   if (status === 'locked') return { borderColor: 'rgba(255,51,102,0.5)', background: 'rgba(255,51,102,0.05)', animation: 'pulse-red 3s ease-in-out infinite' };
   if (status === 'available') return { borderColor: 'rgba(0,240,255,0.5)', background: 'rgba(0,240,255,0.05)', animation: 'pulse-cyan 2s ease-in-out infinite' };
+  if (status === 'compromised') return { borderColor: 'rgba(255,51,102,0.8)', background: 'rgba(255,51,102,0.1)', animation: 'pulse-red 1.5s ease-in-out infinite' };
   return { borderColor: 'rgba(0,255,136,0.5)', background: 'rgba(0,255,136,0.05)', animation: 'pulse-green 1.5s ease-in-out infinite' };
 }
 
@@ -24,7 +25,7 @@ export default function TreeNodeCard({ nodeDatum, toggleNode }: CustomNodeElemen
   const baseUrl = attrs?.baseUrl ?? '';
   const actionCount = Number(attrs?.actionCount ?? 0);
   const difficulty = attrs?.difficulty ?? 'normal';
-  const completed = status === 'completed';
+  const completed = status === 'completed' || status === 'compromised';
 
   const isSelected = useGameStore((s) => s.selectedNodeId === nodeId);
   const selectNode = useGameStore((s) => s.selectNode);
