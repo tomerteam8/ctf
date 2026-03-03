@@ -162,11 +162,19 @@ async function sendLocal(
   systemPrompt: string,
   messages: { role: string; content: string }[],
 ): Promise<string> {
-  const response = await fetch('http://localhost:3001/api/prompt', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ systemPrompt, messages }),
-  });
+  let response: Response;
+  try {
+    response = await fetch('http://127.0.0.1:3001/api/prompt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ systemPrompt, messages }),
+    });
+  } catch {
+    throw new Error(
+      'Cannot reach local Claude proxy at 127.0.0.1:3001. ' +
+      'Start it with: node server.mjs'
+    );
+  }
   if (!response.ok) {
     const error = await response.text();
     throw new Error(`Claude proxy error: ${response.status} - ${error}`);
