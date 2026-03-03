@@ -6,6 +6,7 @@ import { sendPrompt, LLM_NEEDS_KEY, LLM_PROVIDER } from '../services/llm';
 interface PromptMessage {
   role: 'user' | 'assistant';
   content: string;
+  success?: boolean;
 }
 
 interface GameState {
@@ -123,10 +124,10 @@ export const useGameStore = create<GameState>((set, get) => ({
         state.difficulty
       );
 
-      // Add assistant response to history
+      // Add assistant response to history (tagged with success/failure)
       const historyWithResponse = [
         ...updatedHistory,
-        { role: 'assistant' as const, content: llmResponse.message },
+        { role: 'assistant' as const, content: llmResponse.message, success: llmResponse.success },
       ];
 
       // Find the matched action to get its reveals

@@ -146,26 +146,34 @@ export default function NodePanel() {
                 }}>
                   History
                 </h3>
-                {history.map((msg, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      marginBottom: 8,
-                      padding: '8px 12px',
-                      borderRadius: 8,
-                      fontSize: 12,
-                      lineHeight: 1.5,
-                      background: msg.role === 'user' ? 'rgba(0,240,255,0.1)' : 'rgba(0,255,136,0.1)',
-                      border: `1px solid ${msg.role === 'user' ? 'rgba(0,240,255,0.2)' : 'rgba(0,255,136,0.2)'}`,
-                      color: msg.role === 'user' ? '#00f0ff' : '#00ff88',
-                    }}
-                  >
-                    <span style={{ fontSize: 9, textTransform: 'uppercase', opacity: 0.6, letterSpacing: '0.1em' }}>
-                      {msg.role === 'user' ? 'You' : 'System'}
-                    </span>
-                    <div style={{ marginTop: 2 }}>{msg.content}</div>
-                  </div>
-                ))}
+                {history.map((msg, i) => {
+                  const isUser = msg.role === 'user';
+                  const isFail = !isUser && msg.success === false;
+                  const bg = isUser ? 'rgba(0,240,255,0.1)' : isFail ? 'rgba(255,51,102,0.1)' : 'rgba(0,255,136,0.1)';
+                  const border = isUser ? 'rgba(0,240,255,0.2)' : isFail ? 'rgba(255,51,102,0.2)' : 'rgba(0,255,136,0.2)';
+                  const color = isUser ? '#00f0ff' : isFail ? '#ff3366' : '#00ff88';
+                  const label = isUser ? 'You' : isFail ? 'Failed' : 'Success';
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        marginBottom: 8,
+                        padding: '8px 12px',
+                        borderRadius: 8,
+                        fontSize: 12,
+                        lineHeight: 1.5,
+                        background: bg,
+                        border: `1px solid ${border}`,
+                        color,
+                      }}
+                    >
+                      <span style={{ fontSize: 9, textTransform: 'uppercase', opacity: 0.6, letterSpacing: '0.1em' }}>
+                        {label}
+                      </span>
+                      <div style={{ marginTop: 2 }}>{msg.content}</div>
+                    </div>
+                  );
+                })}
               </div>
             )}
             <div ref={chatEndRef} />
