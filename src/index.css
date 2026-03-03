@@ -1,0 +1,41 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  background-color: #0a0e17;
+  color: #e2e8f0;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+#root {
+  height: 100vh;
+  width: 100vw;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0a0e17; }
+::-webkit-scrollbar-thumb { background: #2a3a5c; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #00f0ff; }
+
+@keyframes pulse-cyan {
+  0%, 100% { box-shadow: 0 0 5px rgba(0,240,255,0.3), 0 0 10px rgba(0,240,255,0.1); }
+  50% { box-shadow: 0 0 15px rgba(0,240,255,0.5), 0 0 30px rgba(0,240,255,0.2); }
+}
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 5px rgba(0,255,136,0.3), 0 0 10px rgba(0,255,136,0.1); }
+  50% { box-shadow: 0 0 20px rgba(0,255,136,0.6), 0 0 40px rgba(0,255,136,0.3); }
+}
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 5px rgba(255,51,102,0.2); }
+  50% { box-shadow: 0 0 10px rgba(255,51,102,0.4); }
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
