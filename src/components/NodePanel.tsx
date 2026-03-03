@@ -2,10 +2,18 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
 import ActionCard from './ActionCard';
+import type { InfoSeverity } from '../data/types';
 
 const typeIcons: Record<string, string> = {
   internet_server: '🌐', web_page: '📄',
   database: '🗄️', api: '⚡', network: '🖥️',
+};
+
+const severityColor: Record<InfoSeverity, string> = {
+  critical: '#ff3366',
+  high: '#ff6b35',
+  medium: '#ffc107',
+  info: '#94a3b8',
 };
 
 const statusBadge = (status: string): React.CSSProperties => ({
@@ -29,6 +37,7 @@ export default function NodePanel() {
   const node = selectedNodeId ? nodes.get(selectedNodeId) : null;
 
   const [input, setInput] = useState('');
+  const [showServiceInfo, setShowServiceInfo] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -37,6 +46,11 @@ export default function NodePanel() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [history.length]);
+
+  // Collapse service info when switching nodes
+  useEffect(() => {
+    setShowServiceInfo(false);
+  }, [selectedNodeId]);
 
   // Pick up pending prompt text from asset clicks
   useEffect(() => {
@@ -108,6 +122,72 @@ export default function NodePanel() {
               <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.5 }}>{node.data}</p>
               <div style={{ marginTop: 8, fontFamily: 'monospace', fontSize: 12, color: '#00f0ff' }}>{node.baseUrl}</div>
             </div>
+
+            {/* Service Details (expandable) */}
+            {node.serviceInfo && node.serviceInfo.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <button
+                  onClick={() => setShowServiceInfo(!showServiceInfo)}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: '1px solid #2a3a5c',
+                    background: 'rgba(10,14,23,0.5)',
+                    color: '#94a3b8',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.15em',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span>Service Details</span>
+                  <span style={{ fontSize: 10, transition: 'transform 0.2s', transform: showServiceInfo ? 'rotate(180deg)' : 'rotate(0)' }}>
+                    ▼
+                  </span>
+                </button>
+                {showServiceInfo && (
+                  <div style={{
+                    marginTop: 4,
+                    padding: 10,
+                    borderRadius: '0 0 8px 8px',
+                    background: 'rgba(10,14,23,0.5)',
+                    border: '1px solid #2a3a5c',
+                    borderTop: 'none',
+                  }}>
+                    {node.serviceInfo.map((detail, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          padding: '5px 0',
+                          borderBottom: i < node.serviceInfo!.length - 1 ? '1px solid rgba(42,58,92,0.5)' : 'none',
+                        }}
+                      >
+                        <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0, marginRight: 12 }}>
+                          {detail.label}
+                        </span>
+                        <span style={{
+                          fontSize: 11,
+                          fontFamily: 'monospace',
+                          textAlign: 'right',
+                          color: detail.severity ? severityColor[detail.severity] : '#e2e8f0',
+                          fontWeight: detail.severity && detail.severity !== 'info' ? 600 : 400,
+                        }}>
+                          {detail.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Hint chips */}
             {(() => {

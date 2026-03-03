@@ -14,6 +14,14 @@ export interface Action {
   category: ActionCategory;
 }
 
+export type InfoSeverity = 'critical' | 'high' | 'medium' | 'info';
+
+export interface ServiceDetail {
+  label: string;
+  value: string;
+  severity?: InfoSeverity;
+}
+
 export interface PentestNode {
   id: string;
   parentId: string | null;
@@ -24,6 +32,7 @@ export interface PentestNode {
   possibleActions: Action[];
   discovered: boolean;
   status: NodeStatus;
+  serviceInfo?: ServiceDetail[];
 }
 
 export interface Asset {

@@ -11,6 +11,13 @@ export const sampleNodes: PentestNode[] = [
     data: 'E-commerce platform. Begin reconnaissance to discover attack surfaces.',
     baseUrl: 'https://shop.target.com',
     type: 'internet_server',
+    serviceInfo: [
+      { label: 'Server', value: 'nginx/1.24.0' },
+      { label: 'OS', value: 'Ubuntu 22.04 LTS' },
+      { label: 'Open Ports', value: '21, 25, 80, 443, 6379' },
+      { label: 'TLS', value: 'TLS 1.2 / 1.3, HSTS enabled' },
+      { label: 'WAF', value: 'Cloudflare (bypass possible via origin IP)' },
+    ],
     possibleActions: [
       {
         id: 'nmap_scan',
@@ -46,6 +53,14 @@ export const sampleNodes: PentestNode[] = [
     data: 'Main e-commerce frontend. User accounts, product listings, and checkout flow.',
     baseUrl: 'https://shop.target.com/app',
     type: 'web_page',
+    serviceInfo: [
+      { label: 'Framework', value: 'Express.js 4.18.2' },
+      { label: 'Runtime', value: 'Node.js 18.17.0' },
+      { label: 'Auth', value: 'JWT (HS256) — weak secret suspected', severity: 'medium' },
+      { label: 'Session', value: 'Cookie-based, HttpOnly, SameSite=Lax' },
+      { label: 'CORS', value: 'Access-Control-Allow-Origin: *', severity: 'medium' },
+      { label: 'Headers', value: 'X-Powered-By present (information leak)', severity: 'info' },
+    ],
     possibleActions: [
       {
         id: 'dir_enum',
@@ -81,6 +96,13 @@ export const sampleNodes: PentestNode[] = [
     data: 'vsftpd 3.0.5 running on port 21. Anonymous login banner detected. Could contain backup files, deployment scripts, or database dumps.',
     baseUrl: 'ftp://shop.target.com:21',
     type: 'internet_server',
+    serviceInfo: [
+      { label: 'Software', value: 'vsftpd 3.0.5' },
+      { label: 'Anonymous Login', value: 'Banner present but auth required' },
+      { label: 'CVE-2011-2523', value: 'Backdoor in vsftpd 2.3.4 — NOT applicable (v3.0.5)', severity: 'info' },
+      { label: 'TLS', value: 'FTPS enabled, TLS 1.2' },
+      { label: 'Chroot', value: 'Enabled — users jailed to home directory' },
+    ],
     possibleActions: [
       {
         id: 'ftp_anon_login',
@@ -117,6 +139,14 @@ export const sampleNodes: PentestNode[] = [
     data: 'Postfix SMTP server on port 25. Handles corporate email for target.com. Open relay testing and user enumeration may be possible.',
     baseUrl: 'smtp://mail.target.com:25',
     type: 'internet_server',
+    serviceInfo: [
+      { label: 'Software', value: 'Postfix 3.7.6' },
+      { label: 'SPF', value: 'v=spf1 include:_spf.target.com ~all' },
+      { label: 'DMARC', value: 'p=quarantine; rua=mailto:dmarc@target.com' },
+      { label: 'DKIM', value: 'Enabled (2048-bit RSA)' },
+      { label: 'Open Relay', value: 'Relay access denied (properly configured)', severity: 'info' },
+      { label: 'VRFY Command', value: 'Disabled', severity: 'info' },
+    ],
     possibleActions: [
       {
         id: 'smtp_user_enum',
@@ -153,6 +183,14 @@ export const sampleNodes: PentestNode[] = [
     data: 'Redis 7.2 on port 6379. Potentially exposed caching layer. Unauthenticated Redis instances can lead to RCE via module loading or SSH key injection.',
     baseUrl: 'redis://shop.target.com:6379',
     type: 'database',
+    serviceInfo: [
+      { label: 'Version', value: 'Redis 7.2.4' },
+      { label: 'Auth', value: 'requirepass enabled' },
+      { label: 'CVE-2022-0543', value: 'Lua sandbox escape — Redis < 7.0', severity: 'info' },
+      { label: 'CVE-2023-28856', value: 'AUTH command DoS — patched in 7.2.1', severity: 'info' },
+      { label: 'Protected Mode', value: 'Enabled — rejects external connections' },
+      { label: 'Bind', value: '127.0.0.1 only (loopback)' },
+    ],
     possibleActions: [
       {
         id: 'redis_noauth',
@@ -193,6 +231,15 @@ export const sampleNodes: PentestNode[] = [
     data: 'User password change API. Accepts user_type field in the request body alongside password fields. The backend runs a raw SQL UPDATE on the users table — columns include user_type (values: "user", "employee").',
     baseUrl: 'https://shop.target.com/api/change-password',
     type: 'api',
+    serviceInfo: [
+      { label: 'Method', value: 'POST' },
+      { label: 'Content-Type', value: 'application/json' },
+      { label: 'Auth', value: 'Bearer JWT required' },
+      { label: 'Rate Limit', value: 'None detected', severity: 'medium' },
+      { label: 'Input Validation', value: 'No parameterized queries — raw SQL interpolation', severity: 'critical' },
+      { label: 'Exposed Fields', value: 'password, user_type, discount_rate accepted in body', severity: 'high' },
+      { label: 'DB Backend', value: 'PostgreSQL 15.3' },
+    ],
     possibleActions: [
       {
         id: 'sqli_user_type',
@@ -242,6 +289,13 @@ export const sampleNodes: PentestNode[] = [
     data: 'GraphQL endpoint with GraphiQL playground enabled. Introspection queries may expose the full schema including internal types, mutations, and sensitive fields.',
     baseUrl: 'https://shop.target.com/graphql',
     type: 'api',
+    serviceInfo: [
+      { label: 'Engine', value: 'Apollo Server 4.9.5' },
+      { label: 'Introspection', value: 'Disabled in production', severity: 'info' },
+      { label: 'Query Depth Limit', value: '10 levels (configured)' },
+      { label: 'Rate Limit', value: '100 req/min per IP' },
+      { label: 'Persisted Queries', value: 'Enabled — only allow-listed queries accepted' },
+    ],
     possibleActions: [
       {
         id: 'graphql_introspect',
@@ -278,6 +332,14 @@ export const sampleNodes: PentestNode[] = [
     data: 'Product image upload API accepting multipart form data. File uploads are a classic vector for web shells, path traversal, and stored XSS.',
     baseUrl: 'https://shop.target.com/api/upload',
     type: 'api',
+    serviceInfo: [
+      { label: 'Method', value: 'POST multipart/form-data' },
+      { label: 'Max Size', value: '5MB' },
+      { label: 'Allowed Types', value: '.jpg, .png, .webp (server-side validation)' },
+      { label: 'Storage', value: 'S3 with randomized filenames' },
+      { label: 'Content-Type Check', value: 'Magic bytes validated', severity: 'info' },
+      { label: 'AV Scan', value: 'ClamAV on upload pipeline' },
+    ],
     possibleActions: [
       {
         id: 'upload_webshell',
@@ -314,6 +376,13 @@ export const sampleNodes: PentestNode[] = [
     data: 'Full-text search endpoint with query parameter reflecting user input. Potential for SQL injection, XSS, or NoSQL injection depending on backend implementation.',
     baseUrl: 'https://shop.target.com/api/search?q=',
     type: 'api',
+    serviceInfo: [
+      { label: 'Engine', value: 'Elasticsearch 8.11.1' },
+      { label: 'Input Sanitization', value: 'Query parameterized via ES DSL' },
+      { label: 'Output Encoding', value: 'HTML entities escaped on server side' },
+      { label: 'Rate Limit', value: '60 req/min per IP' },
+      { label: 'CVE-2023-31419', value: 'ES stack overflow via regex — patched in 8.9.1', severity: 'info' },
+    ],
     possibleActions: [
       {
         id: 'search_sqli',
@@ -350,6 +419,13 @@ export const sampleNodes: PentestNode[] = [
     data: 'Stripe payment webhook handler. Processes POST requests with payment confirmations. Improper signature verification could allow forged payment events and order manipulation.',
     baseUrl: 'https://shop.target.com/api/webhooks/payment',
     type: 'api',
+    serviceInfo: [
+      { label: 'Provider', value: 'Stripe API v2023-10-16' },
+      { label: 'Signature Verification', value: 'stripe.webhooks.constructEvent() with whsec_*' },
+      { label: 'Tolerance', value: '300s timestamp tolerance (default)' },
+      { label: 'Idempotency', value: 'Event ID deduplication enabled' },
+      { label: 'TLS', value: 'Stripe-to-server TLS 1.3 only' },
+    ],
     possibleActions: [
       {
         id: 'webhook_forge',
@@ -390,6 +466,13 @@ export const sampleNodes: PentestNode[] = [
     data: 'Internal employee-only endpoint exposed to authenticated users with user_type="employee". Provides access to inventory management, order processing, and internal tools.',
     baseUrl: 'https://shop.target.com/internal/employee',
     type: 'web_page',
+    serviceInfo: [
+      { label: 'Framework', value: 'Express.js 4.18.2 (same as main app)' },
+      { label: 'Auth', value: 'JWT user_type="employee" check' },
+      { label: 'URL Fetch Feature', value: 'Server-side HTTP client with user-supplied URL', severity: 'high' },
+      { label: 'SSRF Protection', value: 'No URL validation or allow-list on fetch endpoint', severity: 'critical' },
+      { label: 'Internal Access', value: 'Can reach 10.0.0.0/24 from server' },
+    ],
     possibleActions: [
       {
         id: 'ssrf_probe',
@@ -428,6 +511,13 @@ export const sampleNodes: PentestNode[] = [
     data: 'Internal-only endpoint at 10.0.0.5:8080/internal/admin/create. Intended for provisioning admin accounts from the internal network. No authentication — relies on network-level access control only.',
     baseUrl: 'http://10.0.0.5:8080/internal/admin/create',
     type: 'api',
+    serviceInfo: [
+      { label: 'Method', value: 'POST' },
+      { label: 'Auth', value: 'None — trusts network-level isolation', severity: 'critical' },
+      { label: 'Network ACL', value: 'Accepts any source within 10.0.0.0/24' },
+      { label: 'Input', value: '{ email, password, role } — no validation on role field', severity: 'critical' },
+      { label: 'Logging', value: 'No audit trail on account creation', severity: 'high' },
+    ],
     possibleActions: [
       {
         id: 'ssrf_create_admin',
@@ -455,6 +545,14 @@ export const sampleNodes: PentestNode[] = [
     data: 'Internal Grafana instance at 10.0.0.12:3000. Exposes infrastructure metrics, database query performance, and server health. Default credentials are commonly left unchanged on internal tools.',
     baseUrl: 'http://10.0.0.12:3000',
     type: 'web_page',
+    serviceInfo: [
+      { label: 'Version', value: 'Grafana 10.2.3' },
+      { label: 'CVE-2021-43798', value: 'Path traversal — patched in 8.3.1 (not applicable)', severity: 'info' },
+      { label: 'CVE-2023-6152', value: 'Email change bypass — patched in 10.2.3', severity: 'info' },
+      { label: 'Default Creds', value: 'admin:admin changed on first login' },
+      { label: 'Auth', value: 'LDAP-backed, 2FA enforced for admin' },
+      { label: 'Data Sources', value: 'Prometheus, PostgreSQL (read-only)' },
+    ],
     possibleActions: [
       {
         id: 'grafana_default_creds',
@@ -491,6 +589,13 @@ export const sampleNodes: PentestNode[] = [
     data: 'Internal Confluence instance at 10.0.0.20:8090. Corporate knowledge base likely containing architecture diagrams, credentials in runbooks, and deployment procedures.',
     baseUrl: 'http://10.0.0.20:8090',
     type: 'web_page',
+    serviceInfo: [
+      { label: 'Version', value: 'Confluence 8.5.4 LTS' },
+      { label: 'CVE-2023-22527', value: 'Template injection RCE — patched in 8.5.4', severity: 'info' },
+      { label: 'CVE-2022-26134', value: 'OGNL injection RCE — patched in 7.18.1', severity: 'info' },
+      { label: 'Auth', value: 'SSO via Okta, anonymous access disabled' },
+      { label: 'Spaces', value: '47 spaces, 12,000+ pages (estimated)' },
+    ],
     possibleActions: [
       {
         id: 'confluence_rce',
@@ -519,6 +624,14 @@ export const sampleNodes: PentestNode[] = [
     data: 'Jenkins automation server at 10.0.0.30:8080. CI/CD pipelines often contain deployment credentials, cloud keys, and have script consoles that allow direct code execution.',
     baseUrl: 'http://10.0.0.30:8080',
     type: 'internet_server',
+    serviceInfo: [
+      { label: 'Version', value: 'Jenkins 2.426.3 LTS' },
+      { label: 'CVE-2024-23897', value: 'Arbitrary file read via CLI — patched in 2.426.3', severity: 'info' },
+      { label: 'CVE-2023-27898', value: 'XSS in build logs — patched in 2.400', severity: 'info' },
+      { label: 'Script Console', value: 'Restricted to admin role' },
+      { label: 'Auth', value: 'Matrix-based security, LDAP backend' },
+      { label: 'Agents', value: '8 build agents, all containerized (no SSH)' },
+    ],
     possibleActions: [
       {
         id: 'jenkins_script_console',
