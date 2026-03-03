@@ -179,6 +179,13 @@ export default function Header() {
                 );
               })}
             </div>
+            <p style={{ fontSize: 10, color: '#94a3b8', marginTop: 8, lineHeight: 1.5 }}>
+              {difficulty === 'easy'
+                ? 'Loose matching — vague prompts are accepted. Hints are always visible.'
+                : difficulty === 'normal'
+                  ? 'You must describe the technique clearly and reference required assets by name. Hints appear after 3 failures.'
+                  : 'Exact tool names and asset values required. No hints provided.'}
+            </p>
 
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <button

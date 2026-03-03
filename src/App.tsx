@@ -2,6 +2,7 @@ import PentestTree from './components/PentestTree';
 import NodePanel from './components/NodePanel';
 import AssetInventory from './components/AssetInventory';
 import ActionResultModal from './components/ActionResultModal';
+import FlagModal from './components/FlagModal';
 import Header from './components/Header';
 import ParticleBackground from './components/ParticleBackground';
 
@@ -16,6 +17,7 @@ export default function App() {
       <AssetInventory />
       <NodePanel />
       <ActionResultModal />
+      <FlagModal />
     </div>
   );
 }

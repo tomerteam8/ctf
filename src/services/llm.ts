@@ -57,7 +57,7 @@ ${assetsDesc}
 
 Based on the user's prompt, determine:
 1. Which action (if any) they are trying to perform
-2. Generate 4-8 lines of realistic terminal/tool output appropriate to the action
+2. Generate 8-15 lines of realistic, varied terminal/tool output appropriate to the action
 3. Whether the action succeeds or fails
 
 IMPORTANT RULES:
@@ -66,7 +66,18 @@ IMPORTANT RULES:
 - If no action matches the prompt, set matchedActionId to null and provide a helpful message suggesting available actions.
 - The revealedNodes and revealedAssets MUST come exactly from the matched action's definition (listed above). Do NOT invent new ones.
 - If success is false, revealedNodes and revealedAssets should be empty arrays.
-- Terminal logs should look like realistic command-line output (nmap, sqlmap, gobuster, curl, etc.)
+
+LOG OUTPUT GUIDELINES — make the terminal logs immersive and specific to what the user typed:
+- Mirror the tools/techniques the user mentioned (nmap, sqlmap, curl, gobuster, burpsuite, etc.)
+- Include realistic details: IP addresses, ports, HTTP status codes, response sizes, timestamps
+- For scans: show discovered ports/services progressively, include version info
+- For SQL injection: show payloads attempted, server responses, extracted data
+- For SSRF: show crafted URLs, internal responses, discovered endpoints
+- For enumeration: show directory paths, status codes, response sizes
+- For brute force: show attempts, failures, then the successful combo
+- On failure: show realistic error output (connection refused, 403 forbidden, WAF blocks, timeouts)
+- Vary the style — not every line should start with ">". Mix command prompts ($), tool output, status lines, and raw data
+- Include the target URL/IP from the current node's baseUrl in the output
 
 Respond ONLY with JSON in this exact format (no markdown, no code fences, just raw JSON):
 {
@@ -83,13 +94,12 @@ Respond ONLY with JSON in this exact format (no markdown, no code fences, just r
 // Parse response (shared)
 // ---------------------------------------------------------------------------
 
-function parseResponse(content: string): LLMResponse {
-  const jsonStr = content.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
-  const parsed: LLMResponse = JSON.parse(jsonStr);
+function parseResponse(content: string | Record<string, unknown>): LLMResponse {
+  const parsed = typeof content === 'string' ? JSON.parse(content) : content;
   return {
     matchedActionId: parsed.matchedActionId ?? null,
     success: parsed.success ?? false,
-    logs: parsed.logs ?? [],
+    logs: (parsed.logs ?? []).map((l) => typeof l === 'string' ? l : String(l ?? '')),
     message: parsed.message ?? '',
     revealedNodes: parsed.revealedNodes ?? [],
     revealedAssets: parsed.revealedAssets ?? [],
@@ -119,8 +129,7 @@ async function sendOpenAI(
     }),
   });
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`OpenAI API error: ${response.status} - ${error}`);
+    throw new Error('Failed to reach the AI service. Please check your API key and try again.');
   }
   const data = await response.json();
   return data.choices[0].message.content;
@@ -151,8 +160,7 @@ async function sendAnthropic(
     }),
   });
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Anthropic API error: ${response.status} - ${error}`);
+    throw new Error('Failed to reach the AI service. Please check your API key and try again.');
   }
   const data = await response.json();
   return data.content[0].text;
@@ -176,8 +184,14 @@ async function sendLocal(
     );
   }
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Claude proxy error: ${response.status} - ${error}`);
+    let userMessage: string;
+    try {
+      const body = await response.json();
+      userMessage = body.error || 'An unexpected error occurred.';
+    } catch {
+      userMessage = 'Something went wrong. Please contact the developer and refer them to server.log.';
+    }
+    throw new Error(userMessage);
   }
   const data = await response.json();
   return data.response;
@@ -198,7 +212,7 @@ export async function sendPrompt(
   const systemPrompt = buildSystemPrompt(node, assets, difficulty);
   const messages = [...history, { role: 'user', content: prompt }];
 
-  let raw: string;
+  let raw: string | Record<string, unknown>;
   switch (LLM_PROVIDER) {
     case 'openai':
       raw = await sendOpenAI(systemPrompt, messages, apiKey);

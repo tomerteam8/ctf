@@ -14,11 +14,13 @@ interface GameState {
   selectedNodeId: string | null;
   actionResult: ActionResult | null;
   executingAction: boolean;
+  executingPrompt: string;
   apiKey: string;
   promptHistory: Record<string, PromptMessage[]>;
   pendingPromptText: string;
   difficulty: Difficulty;
   nodeFailures: Record<string, number>;
+  capturedFlag: string | null;
 
   selectNode: (id: string | null) => void;
   executePrompt: (nodeId: string, prompt: string) => Promise<void>;
@@ -29,6 +31,7 @@ interface GameState {
   setApiKey: (key: string) => void;
   setPendingPromptText: (text: string) => void;
   setDifficulty: (d: Difficulty) => void;
+  clearFlag: () => void;
 }
 
 const initialNodes = new Map<string, PentestNode>();
@@ -40,11 +43,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   selectedNodeId: null,
   actionResult: null,
   executingAction: false,
+  executingPrompt: '',
   apiKey: localStorage.getItem('peter-openai-key') || '',
   promptHistory: {},
   pendingPromptText: '',
   difficulty: (localStorage.getItem('peter-difficulty') as Difficulty) || 'normal',
   nodeFailures: {},
+  capturedFlag: null,
 
   selectNode: (id) => set({ selectedNodeId: id }),
 
@@ -80,6 +85,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   clearActionResult: () => set({ actionResult: null }),
+  clearFlag: () => set({ capturedFlag: null }),
 
   executePrompt: async (nodeId, prompt) => {
     const state = get();
@@ -103,6 +109,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const updatedHistory = [...nodeHistory, { role: 'user' as const, content: prompt }];
     set({
       executingAction: true,
+      executingPrompt: prompt,
       promptHistory: { ...state.promptHistory, [nodeId]: updatedHistory },
     });
 
@@ -205,11 +212,17 @@ export const useGameStore = create<GameState>((set, get) => ({
           nodeFailures[nodeId] = (nodeFailures[nodeId] || 0) + 1;
         }
 
+        // Check for flag triggers
+        const flag = llmResponse.success && matchedAction?.id === 'sqli_discount'
+          ? 'FLAG{discount_injection_99_percent_off}'
+          : null;
+
         return {
           nodes,
           assets: [...s.assets, ...revealedAssets],
           executingAction: false,
           nodeFailures,
+          capturedFlag: flag ?? s.capturedFlag,
           promptHistory: { ...s.promptHistory, [nodeId]: historyWithResponse },
           actionResult: {
             success: llmResponse.success,

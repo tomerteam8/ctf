@@ -12,6 +12,7 @@ dist/
 # Logs
 *.log
 npm-debug.log*
+server.log
 
 # Editor
 .vscode/
