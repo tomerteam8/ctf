@@ -69,8 +69,10 @@ export default function NodePanel() {
   };
 
   const handleHintClick = (text: string) => {
-    setInput(text);
-    inputRef.current?.focus();
+    if (!selectedNodeId || executingAction) return;
+    const prompt = input.trim() ? `${input.trim()} — ${text}` : text;
+    setInput('');
+    executePrompt(selectedNodeId, prompt);
   };
 
   return (
@@ -204,7 +206,7 @@ export default function NodePanel() {
                     Hints
                   </h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                    {node.possibleActions.map((action) => (
+                    {node.possibleActions.filter((a) => a.showAsHint !== false).map((action) => (
                       <ActionCard
                         key={action.id}
                         action={action}

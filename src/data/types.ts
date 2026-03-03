@@ -12,6 +12,7 @@ export interface Action {
   revealsNodes: string[];
   revealsAssets?: { type: AssetType; name: string; value: string }[];
   category: ActionCategory;
+  showAsHint?: boolean;
 }
 
 export type InfoSeverity = 'critical' | 'high' | 'medium' | 'info';

@@ -67,7 +67,7 @@ export const sampleNodes: PentestNode[] = [
         name: 'Directory Enumeration',
         description: 'Brute-force discover hidden directories, endpoints, and API routes.',
         requiredAssets: [],
-        revealsNodes: ['password_change', 'graphql_api', 'file_upload', 'search_api', 'payment_webhook'],
+        revealsNodes: ['user_registration', 'graphql_api', 'file_upload', 'search_api', 'payment_webhook'],
         category: 'enumeration',
       },
       {
@@ -93,7 +93,7 @@ export const sampleNodes: PentestNode[] = [
     id: 'ftp_server',
     parentId: 'root',
     title: 'FTP Service',
-    data: 'vsftpd 3.0.5 running on port 21. Anonymous login banner detected. Could contain backup files, deployment scripts, or database dumps.',
+    data: 'vsftpd 3.0.5 running on port 21. Anonymous login banner detected. Backup database dump detected in public directory — may contain production credentials. Could contain backup files, deployment scripts, or database dumps.',
     baseUrl: 'ftp://shop.target.com:21',
     type: 'internet_server',
     serviceInfo: [
@@ -102,6 +102,8 @@ export const sampleNodes: PentestNode[] = [
       { label: 'CVE-2011-2523', value: 'Backdoor in vsftpd 2.3.4 — NOT applicable (v3.0.5)', severity: 'info' },
       { label: 'TLS', value: 'FTPS enabled, TLS 1.2' },
       { label: 'Chroot', value: 'Enabled — users jailed to home directory' },
+      { label: 'Writable Dir', value: '/pub/uploads — world-writable', severity: 'high' },
+      { label: 'Backup Files', value: 'db_dump_2024.sql.gz found in /pub (contains credentials)', severity: 'critical' },
     ],
     possibleActions: [
       {
@@ -136,7 +138,7 @@ export const sampleNodes: PentestNode[] = [
     id: 'mail_server',
     parentId: 'root',
     title: 'SMTP Mail Server',
-    data: 'Postfix SMTP server on port 25. Handles corporate email for target.com. Open relay testing and user enumeration may be possible.',
+    data: 'Postfix SMTP server on port 25. Handles corporate email for target.com. VRFY command enabled — responds with full mailbox paths. CRLF header injection accepted in MAIL FROM parameter. Internal relay discovered at mail-relay.internal:2525. Open relay testing and user enumeration may be possible.',
     baseUrl: 'smtp://mail.target.com:25',
     type: 'internet_server',
     serviceInfo: [
@@ -145,7 +147,8 @@ export const sampleNodes: PentestNode[] = [
       { label: 'DMARC', value: 'p=quarantine; rua=mailto:dmarc@target.com' },
       { label: 'DKIM', value: 'Enabled (2048-bit RSA)' },
       { label: 'Open Relay', value: 'Relay access denied (properly configured)', severity: 'info' },
-      { label: 'VRFY Command', value: 'Disabled', severity: 'info' },
+      { label: 'VRFY Command', value: 'Enabled — responds with full mailbox paths', severity: 'high' },
+      { label: 'Header Injection', value: 'CRLF injection accepted in MAIL FROM parameter', severity: 'critical' },
     ],
     possibleActions: [
       {
@@ -153,7 +156,7 @@ export const sampleNodes: PentestNode[] = [
         name: 'SMTP User Enumeration',
         description: 'Use VRFY and EXPN commands to enumerate valid email addresses and internal usernames.',
         requiredAssets: [],
-        revealsNodes: [],
+        revealsNodes: ['smtp_internal_relay'],
         category: 'enumeration',
       },
       {
@@ -180,7 +183,7 @@ export const sampleNodes: PentestNode[] = [
     id: 'redis_cache',
     parentId: 'root',
     title: 'Redis Instance',
-    data: 'Redis 7.2 on port 6379. Potentially exposed caching layer. Unauthenticated Redis instances can lead to RCE via module loading or SSH key injection.',
+    data: 'Redis 7.2 on port 6379. Potentially exposed caching layer. Keyspace scan reveals sess:* keys containing JWT tokens for active user sessions, including admin sessions. Unauthenticated Redis instances can lead to RCE via module loading or SSH key injection.',
     baseUrl: 'redis://shop.target.com:6379',
     type: 'database',
     serviceInfo: [
@@ -190,6 +193,8 @@ export const sampleNodes: PentestNode[] = [
       { label: 'CVE-2023-28856', value: 'AUTH command DoS — patched in 7.2.1', severity: 'info' },
       { label: 'Protected Mode', value: 'Enabled — rejects external connections' },
       { label: 'Bind', value: '127.0.0.1 only (loopback)' },
+      { label: 'Session Data', value: 'User JWT sessions stored as sess:* keys — admin tokens present', severity: 'critical' },
+      { label: 'Timing Side-Channel', value: 'AUTH command timing leaks password length (CVE-2023-28856 variant)', severity: 'high' },
     ],
     possibleActions: [
       {
@@ -197,7 +202,7 @@ export const sampleNodes: PentestNode[] = [
         name: 'Redis No-Auth Access',
         description: 'Attempt to connect without authentication and run INFO to enumerate the instance.',
         requiredAssets: [],
-        revealsNodes: [],
+        revealsNodes: ['redis_session_store'],
         category: 'exploit',
       },
       {
@@ -225,10 +230,41 @@ export const sampleNodes: PentestNode[] = [
   // DIR ENUM RESULTS — real target
   // =========================================================================
   {
+    id: 'user_registration',
+    parentId: 'web_app',
+    title: 'User Registration',
+    data: 'Public sign-up endpoint for new customer accounts. Accepts email and password, returns a session JWT on success. The JWT encodes user_type as "user" by default.',
+    baseUrl: 'https://shop.target.com/api/register',
+    type: 'api',
+    serviceInfo: [
+      { label: 'Method', value: 'POST' },
+      { label: 'Content-Type', value: 'application/json' },
+      { label: 'Rate Limit', value: '5 req/min per IP' },
+      { label: 'Email Validation', value: 'Format check only — no verification email' },
+      { label: 'Password Policy', value: 'Minimum 6 characters, no complexity rules', severity: 'medium' },
+      { label: 'Response', value: 'Returns JWT in Set-Cookie and JSON body' },
+    ],
+    possibleActions: [
+      {
+        id: 'register_account',
+        name: 'Create Account',
+        description: 'Register a new user account to obtain a valid session JWT needed for authenticated endpoints.',
+        requiredAssets: [],
+        revealsNodes: ['password_change'],
+        revealsAssets: [
+          { type: 'token', name: 'Authenticated User', value: 'Registered account with valid session — authenticated as regular user' },
+        ],
+        category: 'exploit',
+      },
+    ],
+    discovered: false,
+    status: 'locked',
+  },
+  {
     id: 'password_change',
     parentId: 'web_app',
     title: 'Password Change Endpoint',
-    data: 'User password change API. Accepts user_type field in the request body alongside password fields. The backend runs a raw SQL UPDATE on the users table — columns include user_type (values: "user", "employee").',
+    data: 'User password change API. Accepts user_type field in the request body alongside password fields. The backend runs a raw SQL UPDATE on the users table — columns include user_type (values: "user", "employee"). Employee accounts receive a staff discount on all purchases.',
     baseUrl: 'https://shop.target.com/api/change-password',
     type: 'api',
     serviceInfo: [
@@ -237,31 +273,33 @@ export const sampleNodes: PentestNode[] = [
       { label: 'Auth', value: 'Bearer JWT required' },
       { label: 'Rate Limit', value: 'None detected', severity: 'medium' },
       { label: 'Input Validation', value: 'No parameterized queries — raw SQL interpolation', severity: 'critical' },
-      { label: 'Exposed Fields', value: 'password, user_type, discount_rate accepted in body', severity: 'high' },
+      { label: 'Exposed Fields', value: 'password, user_type accepted in body', severity: 'high' },
       { label: 'DB Backend', value: 'PostgreSQL 15.3' },
     ],
     possibleActions: [
       {
         id: 'sqli_user_type',
-        name: 'SQL Injection — User Type Escalation',
-        description: 'The endpoint blindly passes user_type into a SQL UPDATE statement. Inject into the user_type field to set it to "employee", escalating privileges.',
-        requiredAssets: [],
+        name: 'SQL Injection — Employee Escalation',
+        description: 'The endpoint blindly passes user_type into a SQL UPDATE statement. Inject into the user_type field to set it to "employee", escalating privileges and unlocking the employee staff discount on all purchases.',
+        requiredAssets: ['token'],
         revealsNodes: ['employee_portal'],
         revealsAssets: [
           { type: 'credentials', name: 'Employee Access', value: 'user_type changed from "user" to "employee" via SQLi on change-password endpoint' },
+          { type: 'logic_flaw', name: 'Staff Discount', value: 'Employee accounts receive staff discount — unauthorized near-free purchases now possible' },
         ],
         category: 'exploit',
       },
       {
-        id: 'sqli_discount',
-        name: 'SQL Injection — Purchase Discounts',
-        description: 'Abuse the same SQL injection to modify the discount_rate column in the users table, granting unauthorized discounts on purchases.',
-        requiredAssets: [],
+        id: 'sqli_column_leak',
+        name: 'SQL Injection — Column Leak',
+        description: 'Inject a UNION SELECT or error-based payload into the password change endpoint to enumerate column names on the users table. Reveals columns: id, email, password, user_type, created_at.',
+        requiredAssets: ['token'],
         revealsNodes: [],
         revealsAssets: [
-          { type: 'logic_flaw', name: 'Unauthorized Discount', value: 'discount_rate set to 99 via SQLi — near-free purchases for the compromised account' },
+          { type: 'db_credentials', name: 'Users Table Schema', value: 'Columns leaked: id (int), email (varchar), password (varchar), user_type (varchar — values: "user", "employee"), created_at (timestamp)' },
         ],
         category: 'exploit',
+        showAsHint: false,
       },
       {
         id: 'param_analysis',
@@ -270,7 +308,7 @@ export const sampleNodes: PentestNode[] = [
         requiredAssets: [],
         revealsNodes: [],
         revealsAssets: [
-          { type: 'db_credentials', name: 'SQL Query Structure', value: 'UPDATE users SET password=$1, user_type=$2, discount_rate=$3 WHERE id=$4' },
+          { type: 'db_credentials', name: 'SQL Query Structure', value: 'UPDATE users SET password=$1, user_type=$2 WHERE id=$3' },
         ],
         category: 'analysis',
       },
@@ -286,7 +324,7 @@ export const sampleNodes: PentestNode[] = [
     id: 'graphql_api',
     parentId: 'web_app',
     title: 'GraphQL API',
-    data: 'GraphQL endpoint with GraphiQL playground enabled. Introspection queries may expose the full schema including internal types, mutations, and sensitive fields.',
+    data: 'GraphQL endpoint with GraphiQL playground enabled. Introspection queries may expose the full schema including internal types, mutations, and sensitive fields. Auth bypass possible via batch aliased mutations.',
     baseUrl: 'https://shop.target.com/graphql',
     type: 'api',
     serviceInfo: [
@@ -295,6 +333,8 @@ export const sampleNodes: PentestNode[] = [
       { label: 'Query Depth Limit', value: '10 levels (configured)' },
       { label: 'Rate Limit', value: '100 req/min per IP' },
       { label: 'Persisted Queries', value: 'Enabled — only allow-listed queries accepted' },
+      { label: 'Batch Queries', value: 'Array batching enabled — auth bypass via aliased mutations', severity: 'critical' },
+      { label: 'Field Suggestions', value: 'Error messages leak field names: adminUsers, internalNotes, secretKey', severity: 'high' },
     ],
     possibleActions: [
       {
@@ -339,6 +379,8 @@ export const sampleNodes: PentestNode[] = [
       { label: 'Storage', value: 'S3 with randomized filenames' },
       { label: 'Content-Type Check', value: 'Magic bytes validated', severity: 'info' },
       { label: 'AV Scan', value: 'ClamAV on upload pipeline' },
+      { label: 'Race Condition', value: 'File accessible at temp URL for ~200ms before AV scan completes', severity: 'critical' },
+      { label: 'Polyglot Bypass', value: 'JPEG/PHP polyglot passes magic-byte check on staging env', severity: 'high' },
     ],
     possibleActions: [
       {
@@ -382,6 +424,8 @@ export const sampleNodes: PentestNode[] = [
       { label: 'Output Encoding', value: 'HTML entities escaped on server side' },
       { label: 'Rate Limit', value: '60 req/min per IP' },
       { label: 'CVE-2023-31419', value: 'ES stack overflow via regex — patched in 8.9.1', severity: 'info' },
+      { label: 'Template Injection', value: 'Mustache templates in ES queries accept {{user_input}}', severity: 'critical' },
+      { label: 'Log Injection', value: 'Search queries written raw to access.log — log4shell vector', severity: 'high' },
     ],
     possibleActions: [
       {
@@ -425,6 +469,8 @@ export const sampleNodes: PentestNode[] = [
       { label: 'Tolerance', value: '300s timestamp tolerance (default)' },
       { label: 'Idempotency', value: 'Event ID deduplication enabled' },
       { label: 'TLS', value: 'Stripe-to-server TLS 1.3 only' },
+      { label: 'Timing Attack', value: 'HMAC comparison uses string equality (non-constant-time)', severity: 'critical' },
+      { label: 'Test Mode Secret', value: 'whsec_test_* signing key leaked in 500 error stack trace', severity: 'high' },
     ],
     possibleActions: [
       {
@@ -656,6 +702,105 @@ export const sampleNodes: PentestNode[] = [
         requiredAssets: ['api_key'],
         revealsNodes: [],
         category: 'enumeration',
+      },
+    ],
+    discovered: false,
+    status: 'locked',
+  },
+
+  // =========================================================================
+  // NEW DECOY CHILDREN — dead-end traps
+  // =========================================================================
+  {
+    id: 'smtp_internal_relay',
+    parentId: 'mail_server',
+    title: 'Internal Mail Relay',
+    data: 'Internal Postfix relay at mail-relay.internal:2525. Forwards authenticated messages to internal @corp.target.com addresses. NTLM auth negotiation observed — potential credential relay target.',
+    baseUrl: 'smtp://mail-relay.internal:2525',
+    type: 'internet_server',
+    serviceInfo: [
+      { label: 'Software', value: 'Postfix 3.7.6 (internal relay)' },
+      { label: 'NTLM Auth', value: 'NTLM negotiation supported — credential relay possible', severity: 'critical' },
+      { label: 'Internal Domains', value: 'Forwards to @corp.target.com — internal phishing vector', severity: 'high' },
+      { label: 'Credential Relay', value: 'NTLM challenge/response interceptable on network', severity: 'critical' },
+      { label: 'Mutual TLS', value: 'Client certificate required for relay — enforced' },
+      { label: 'LDAP Auth', value: 'Relay requires LDAP bind authentication' },
+      { label: 'IP Whitelist', value: 'Accepts connections from 10.0.0.0/8 only' },
+    ],
+    possibleActions: [
+      {
+        id: 'ntlm_relay',
+        name: 'NTLM Credential Relay',
+        description: 'Intercept NTLM challenge/response to relay credentials against internal services.',
+        requiredAssets: [],
+        revealsNodes: [],
+        revealsAssets: [],
+        category: 'exploit',
+      },
+      {
+        id: 'credential_sniff',
+        name: 'Credential Sniffing',
+        description: 'Capture authentication credentials transmitted during SMTP relay sessions.',
+        requiredAssets: [],
+        revealsNodes: [],
+        revealsAssets: [],
+        category: 'exploit',
+      },
+      {
+        id: 'internal_phish',
+        name: 'Internal Phishing via Relay',
+        description: 'Abuse the internal relay to send phishing emails to @corp.target.com addresses.',
+        requiredAssets: [],
+        revealsNodes: [],
+        revealsAssets: [],
+        category: 'exploit',
+      },
+    ],
+    discovered: false,
+    status: 'locked',
+  },
+  {
+    id: 'redis_session_store',
+    parentId: 'redis_cache',
+    title: 'Session Token Store',
+    data: 'Redis keyspace analysis reveals sess:* keys containing JWT tokens for active user sessions, including admin sessions. Token theft could enable session hijacking for any user.',
+    baseUrl: 'redis://shop.target.com:6379/1',
+    type: 'database',
+    serviceInfo: [
+      { label: 'Admin Tokens', value: 'sess:admin:* keys contain valid admin JWT tokens', severity: 'critical' },
+      { label: 'No Expiry', value: 'Session keys have no TTL — tokens valid indefinitely', severity: 'high' },
+      { label: 'Token Replay', value: 'JWT tokens lack jti claim — replay attacks possible', severity: 'critical' },
+      { label: 'Requirepass', value: 'AUTH required — password not obtained' },
+      { label: 'IP-Bound Sessions', value: 'Tokens bound to originating IP via x-forwarded-for fingerprint' },
+      { label: 'Token Fingerprinting', value: 'JWT includes browser fingerprint in payload — mismatch rejects token' },
+    ],
+    possibleActions: [
+      {
+        id: 'session_hijack',
+        name: 'Session Hijacking',
+        description: 'Steal active session tokens from Redis keyspace to impersonate logged-in users.',
+        requiredAssets: [],
+        revealsNodes: [],
+        revealsAssets: [],
+        category: 'exploit',
+      },
+      {
+        id: 'token_replay',
+        name: 'Token Replay Attack',
+        description: 'Replay captured JWT tokens to establish authenticated sessions without credentials.',
+        requiredAssets: [],
+        revealsNodes: [],
+        revealsAssets: [],
+        category: 'exploit',
+      },
+      {
+        id: 'admin_session_steal',
+        name: 'Admin Session Theft',
+        description: 'Target sess:admin:* keys specifically to steal administrator session tokens.',
+        requiredAssets: [],
+        revealsNodes: [],
+        revealsAssets: [],
+        category: 'exploit',
       },
     ],
     discovered: false,

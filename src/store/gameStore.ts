@@ -214,8 +214,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
 
         // Check for flag triggers
-        const flag = llmResponse.success && matchedAction?.id === 'sqli_discount'
-          ? 'FLAG{discount_injection_99_percent_off}'
+        const flag = llmResponse.success && matchedAction?.id === 'sqli_user_type'
+          ? 'FLAG{employee_discount_privilege_escalation}'
           : null;
 
         return {

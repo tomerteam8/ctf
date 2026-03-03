@@ -72,7 +72,7 @@ export default function FlagModal() {
                 lineHeight: 1.6,
               }}
             >
-              You exploited a SQL injection in the password change endpoint to modify the discount_rate column, granting near-free purchases on the platform.
+              You exploited a SQL injection in the password change endpoint to escalate your account to employee status, unlocking staff discounts and enabling near-free purchases on the platform.
             </motion.p>
 
             <motion.div
