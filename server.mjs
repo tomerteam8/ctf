@@ -1,9 +1,9 @@
 /**
  * Local Claude CLI proxy server — DEVELOPER USE ONLY.
  *
- * Maintains a single Claude conversation session per browser session.
- * The first request creates the session with the system prompt; subsequent
- * requests resume it, so Claude retains full context of the pentest game.
+ * Each request spawns a fresh `claude -p` invocation. The system prompt
+ * already contains all context (current node, available actions, player
+ * assets) so no session persistence is needed.
  *
  * Prerequisites:
  *   - Claude Code CLI installed (https://docs.anthropic.com/en/docs/claude-code)
@@ -60,43 +60,28 @@ const childEnv = { ...process.env };
 delete childEnv.CLAUDECODE;
 
 // ---------------------------------------------------------------------------
-// Session management
+// Claude invocation
 // ---------------------------------------------------------------------------
 
-// Maps a system-prompt hash to a session ID so we reuse conversations
-// when the game context (node, assets) hasn't changed.
-let currentSessionId = null;
-
-function runClaude(prompt, sessionId) {
+function runClaude(prompt) {
   return new Promise((resolve, reject) => {
-    const args = [
+    const child = execFile(CLAUDE_PATH, [
       '--output-format', 'stream-json',
       '--verbose',
       '-p', '-',
-    ];
-
-    if (sessionId) {
-      args.unshift('--resume', sessionId);
-    }
-
-    const child = execFile(CLAUDE_PATH, args, {
+    ], {
       env: childEnv,
       timeout: 180000,
       maxBuffer: 4 * 1024 * 1024,
-    }, (err, stdout, stderr) => {
+    }, (err, stdout) => {
       if (err) return reject(err);
 
-      // Parse the stream-json output — look for the result line
       const lines = stdout.split('\n').filter(Boolean);
       let resultText = null;
-      let resolvedSessionId = sessionId;
 
       for (const line of lines) {
         try {
           const obj = JSON.parse(line);
-          if (obj.type === 'system' && obj.session_id) {
-            resolvedSessionId = obj.session_id;
-          }
           if (obj.type === 'result' && obj.result) {
             resultText = obj.result;
           }
@@ -106,13 +91,12 @@ function runClaude(prompt, sessionId) {
       }
 
       if (resultText !== null) {
-        resolve({ text: resultText, sessionId: resolvedSessionId });
+        resolve(resultText);
       } else {
         reject(new Error('No result in Claude output'));
       }
     });
 
-    // Feed prompt via stdin
     child.stdin.write(prompt);
     child.stdin.end();
   });
@@ -149,43 +133,22 @@ app.post('/api/prompt', async (req, res) => {
   }
 
   const userMsg = messages[messages.length - 1]?.content || '(empty)';
-  log('INFO', `Prompt received — user: "${userMsg.slice(0, 80)}${userMsg.length > 80 ? '...' : ''}" (session: ${currentSessionId || 'new'})`);
+  log('INFO', `Prompt received — user: "${userMsg.slice(0, 80)}${userMsg.length > 80 ? '...' : ''}"`);
 
-  // Build the prompt: include system context on first message, user message always
-  let fullPrompt;
-  if (!currentSessionId) {
-    // First request — send the full system prompt + user message
-    fullPrompt = [
-      systemPrompt,
-      '',
-      '--- User message ---',
-      ...messages.map((m) => `${m.role}: ${m.content}`),
-    ].join('\n');
-  } else {
-    // Subsequent requests — send updated context + new user message
-    // Include system prompt so Claude has current game state (node, assets)
-    fullPrompt = [
-      'Updated game state:',
-      systemPrompt,
-      '',
-      '--- User message ---',
-      `user: ${userMsg}`,
-    ].join('\n');
-  }
+  const fullPrompt = [
+    systemPrompt,
+    '',
+    '--- Conversation history ---',
+    ...messages.map((m) => `${m.role}: ${m.content}`),
+  ].join('\n');
 
   const startTime = Date.now();
 
   try {
-    const { text, sessionId } = await runClaude(fullPrompt, currentSessionId);
+    const text = await runClaude(fullPrompt);
     const elapsed = Date.now() - startTime;
 
-    if (!currentSessionId && sessionId) {
-      currentSessionId = sessionId;
-      log('INFO', `Created new session: ${sessionId}`);
-    }
-
     // Parse and validate JSON before sending to the frontend.
-    // Claude may wrap the JSON in markdown code fences or preamble text.
     let parsed;
     try {
       parsed = JSON.parse(text);
@@ -205,13 +168,6 @@ app.post('/api/prompt', async (req, res) => {
     log('ERROR', `Claude CLI failed (${elapsed}ms): ${err.message}`);
     res.status(500).json({ error: 'Something went wrong processing your request. Please contact the developer and refer them to server.log.' });
   }
-});
-
-// Reset session (e.g. when user restarts the game)
-app.post('/api/reset', (_req, res) => {
-  log('INFO', `Session reset (was: ${currentSessionId})`);
-  currentSessionId = null;
-  res.json({ ok: true });
 });
 
 // Bind to loopback only
