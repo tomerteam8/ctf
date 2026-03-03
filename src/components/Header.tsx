@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import type { Difficulty } from '../data/types';
+import { LLM_PROVIDER, LLM_NEEDS_KEY } from '../services/llm';
 
 const st = {
   bar: {
@@ -85,13 +86,13 @@ export default function Header() {
             style={{
               marginLeft: 8,
               background: 'none',
-              border: `1px solid ${apiKey ? 'rgba(0,255,136,0.3)' : 'rgba(255,51,102,0.3)'}`,
+              border: `1px solid ${(!LLM_NEEDS_KEY || apiKey) ? 'rgba(0,255,136,0.3)' : 'rgba(255,51,102,0.3)'}`,
               borderRadius: 8,
               padding: '6px 8px',
               cursor: 'pointer',
               fontSize: 16,
               lineHeight: 1,
-              color: apiKey ? '#00ff88' : '#ff3366',
+              color: (!LLM_NEEDS_KEY || apiKey) ? '#00ff88' : '#ff3366',
             }}
           >
             ⚙
@@ -118,30 +119,36 @@ export default function Header() {
           >
             <h3 style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', marginBottom: 4 }}>Settings</h3>
             <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 16 }}>
-              Enter your OpenAI API key to enable LLM-driven actions.
+              {LLM_NEEDS_KEY
+                ? `Enter your ${LLM_PROVIDER === 'openai' ? 'OpenAI' : 'Anthropic'} API key to enable LLM-driven actions.`
+                : 'Using local Claude CLI — no API key needed.'}
             </p>
-            <label style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-              OpenAI API Key
-            </label>
-            <input
-              type="password"
-              value={keyInput}
-              onChange={(e) => setKeyInput(e.target.value)}
-              placeholder="sk-..."
-              style={{
-                width: '100%',
-                marginTop: 6,
-                padding: '10px 14px',
-                borderRadius: 8,
-                border: '1px solid #2a3a5c',
-                background: 'rgba(10,14,23,0.8)',
-                color: '#e2e8f0',
-                fontSize: 13,
-                fontFamily: 'monospace',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
-            />
+            {LLM_NEEDS_KEY && (
+              <>
+                <label style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                  {LLM_PROVIDER === 'openai' ? 'OpenAI' : 'Anthropic'} API Key
+                </label>
+                <input
+                  type="password"
+                  value={keyInput}
+                  onChange={(e) => setKeyInput(e.target.value)}
+                  placeholder="sk-..."
+                  style={{
+                    width: '100%',
+                    marginTop: 6,
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    border: '1px solid #2a3a5c',
+                    background: 'rgba(10,14,23,0.8)',
+                    color: '#e2e8f0',
+                    fontSize: 13,
+                    fontFamily: 'monospace',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </>
+            )}
             <label style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginTop: 16 }}>
               Difficulty
             </label>

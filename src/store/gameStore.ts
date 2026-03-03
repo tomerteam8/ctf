@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { PentestNode, Asset, ActionResult, Difficulty } from '../data/types';
 import { sampleNodes } from '../data/sampleTree';
-import { sendPrompt } from '../services/openai';
+import { sendPrompt, LLM_NEEDS_KEY, LLM_PROVIDER } from '../services/llm';
 
 interface PromptMessage {
   role: 'user' | 'assistant';
@@ -86,11 +86,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     const node = state.nodes.get(nodeId);
     if (!node) return;
 
-    if (!state.apiKey) {
+    if (LLM_NEEDS_KEY && !state.apiKey) {
       set({
         actionResult: {
           success: false,
-          message: 'No OpenAI API key set. Click the gear icon in the header to add one.',
+          message: `No ${LLM_PROVIDER === 'openai' ? 'OpenAI' : 'Anthropic'} API key set. Click the gear icon in the header to add one.`,
           revealedNodes: [],
           revealedAssets: [],
         },
