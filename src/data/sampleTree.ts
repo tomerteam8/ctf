@@ -22,6 +22,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'nmap_scan',
         name: 'Nmap Port Scan',
+        hint: 'What services are running?',
         description: 'Scan for open ports and running services on the target.',
         requiredAssets: [],
         revealsNodes: ['web_app', 'ftp_server', 'mail_server', 'redis_cache'],
@@ -30,6 +31,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'whois_lookup',
         name: 'WHOIS Lookup',
+        hint: 'Who owns this domain?',
         description: 'Gather domain registration info and related infrastructure.',
         requiredAssets: [],
         revealsNodes: [],
@@ -65,6 +67,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'dir_enum',
         name: 'Directory Enumeration',
+        hint: 'Any hidden paths here?',
         description: 'Brute-force discover hidden directories, endpoints, and API routes.',
         requiredAssets: [],
         revealsNodes: ['user_registration', 'graphql_api', 'file_upload', 'search_api', 'payment_webhook'],
@@ -73,6 +76,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'tech_fingerprint',
         name: 'Technology Fingerprint',
+        hint: 'What tech is behind this?',
         description: 'Identify frameworks, libraries, and server technologies in use.',
         requiredAssets: [],
         revealsNodes: [],
@@ -109,6 +113,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'ftp_anon_login',
         name: 'Anonymous FTP Login',
+        hint: 'Is authentication enforced?',
         description: 'Attempt anonymous login to access publicly shared files.',
         requiredAssets: [],
         revealsNodes: [],
@@ -117,6 +122,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'ftp_brute',
         name: 'FTP Credential Brute Force',
+        hint: 'Are the credentials weak?',
         description: 'Brute-force FTP credentials using common username/password combinations.',
         requiredAssets: [],
         revealsNodes: [],
@@ -125,6 +131,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'ftp_version_exploit',
         name: 'vsftpd Version Exploit',
+        hint: 'Is this version vulnerable?',
         description: 'Check for known CVEs in vsftpd 3.0.5 and attempt exploitation.',
         requiredAssets: [],
         revealsNodes: [],
@@ -154,6 +161,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'smtp_user_enum',
         name: 'SMTP User Enumeration',
+        hint: 'Who has a mailbox here?',
         description: 'Use VRFY and EXPN commands to enumerate valid email addresses and internal usernames.',
         requiredAssets: [],
         revealsNodes: ['smtp_internal_relay'],
@@ -162,6 +170,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'smtp_relay_test',
         name: 'Open Relay Test',
+        hint: 'Can mail be relayed externally?',
         description: 'Test if the SMTP server is an open relay that can be abused for phishing.',
         requiredAssets: [],
         revealsNodes: [],
@@ -170,6 +179,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'smtp_starttls_strip',
         name: 'STARTTLS Downgrade',
+        hint: 'Is encryption mandatory?',
         description: 'Attempt to strip TLS encryption from SMTP sessions to intercept credentials.',
         requiredAssets: [],
         revealsNodes: [],
@@ -200,6 +210,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'redis_noauth',
         name: 'Redis No-Auth Access',
+        hint: 'Is access open?',
         description: 'Attempt to connect without authentication and run INFO to enumerate the instance.',
         requiredAssets: [],
         revealsNodes: ['redis_session_store'],
@@ -208,6 +219,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'redis_rce',
         name: 'Redis RCE via Module Load',
+        hint: 'Can you run code on it?',
         description: 'Attempt to load a malicious Redis module to achieve remote code execution.',
         requiredAssets: [],
         revealsNodes: [],
@@ -216,6 +228,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'redis_ssh_write',
         name: 'Redis SSH Key Injection',
+        hint: 'Can you write to the filesystem?',
         description: 'Write an SSH public key to the authorized_keys file via Redis CONFIG SET.',
         requiredAssets: [],
         revealsNodes: [],
@@ -248,6 +261,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'register_account',
         name: 'Create Account',
+        hint: 'Can you get an account?',
         description: 'Register a new user account to obtain a valid session JWT needed for authenticated endpoints.',
         requiredAssets: [],
         revealsNodes: ['user_profile', 'order_history', 'contact_update', 'password_change', 'notification_settings', 'support_tickets', 'data_export'],
@@ -281,6 +295,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'profile_info_disclosure',
         name: 'Profile Information Disclosure',
+        hint: 'Is the API leaking data?',
         description: 'Check if the profile endpoint leaks sensitive internal fields like user_type, password hash, or internal IDs beyond what the UI renders.',
         requiredAssets: [],
         revealsNodes: [],
@@ -308,6 +323,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'order_idor',
         name: 'IDOR on Order ID',
+        hint: 'Can you see others\' data?',
         description: 'Attempt to access other users\' orders by enumerating order IDs in the URL path.',
         requiredAssets: [],
         revealsNodes: [],
@@ -336,6 +352,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'contact_account_takeover',
         name: 'Account Takeover via Email Change',
+        hint: 'Can you take over an account?',
         description: 'Attempt to change the account email without verification to hijack the account.',
         requiredAssets: [],
         revealsNodes: [],
@@ -365,6 +382,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'sqli_user_type',
         name: 'SQL Injection — Employee Escalation',
+        hint: 'Can you escalate your role?',
         description: 'The endpoint blindly passes user_type into a SQL UPDATE statement. Inject into the user_type field to set it to "employee", escalating privileges and unlocking the employee staff discount on all purchases.',
         requiredAssets: [],
         revealsNodes: ['employee_portal'],
@@ -389,6 +407,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'param_analysis',
         name: 'Parameter Analysis',
+        hint: 'What does the backend accept?',
         description: 'Analyze request parameters and error messages to understand the backend SQL query structure.',
         requiredAssets: [],
         revealsNodes: [],
@@ -418,6 +437,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'notification_mass_toggle',
         name: 'Mass Notification Toggle',
+        hint: 'Can you affect other users?',
         description: 'Attempt to toggle notification preferences for other users by manipulating the request.',
         requiredAssets: [],
         revealsNodes: [],
@@ -447,6 +467,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'support_stored_xss',
         name: 'Stored XSS via Ticket',
+        hint: 'Does input get rendered unsafely?',
         description: 'Inject a JavaScript payload into the support ticket body via Markdown. The payload renders in the agent dashboard but is sandboxed in an iframe with strict CSP.',
         requiredAssets: [],
         revealsNodes: [],
@@ -455,6 +476,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'support_attachment_upload',
         name: 'Malicious Attachment Upload',
+        hint: 'What can you attach?',
         description: 'Upload a crafted file (polyglot, web shell) as a support ticket attachment to achieve code execution on the server.',
         requiredAssets: [],
         revealsNodes: [],
@@ -463,6 +485,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'support_agent_phish',
         name: 'Social Engineering via Ticket',
+        hint: 'Can you trick a human?',
         description: 'Craft a convincing support ticket that tricks a support agent into clicking a malicious link or revealing internal information.',
         requiredAssets: [],
         revealsNodes: [],
@@ -492,6 +515,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'export_idor',
         name: 'IDOR on Export Download',
+        hint: 'Can you access others\' exports?',
         description: 'Attempt to access other users\' data exports by guessing or enumerating export IDs in the download URL.',
         requiredAssets: [],
         revealsNodes: [],
@@ -500,6 +524,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'export_path_traversal',
         name: 'Path Traversal via Export Filename',
+        hint: 'Can you read outside the sandbox?',
         description: 'Inject directory traversal sequences into the export filename parameter to read arbitrary files from the server.',
         requiredAssets: [],
         revealsNodes: [],
@@ -508,6 +533,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'export_race_condition',
         name: 'Race Condition on Export Job',
+        hint: 'What if you\'re faster than the server?',
         description: 'Trigger multiple concurrent export requests to bypass the rate limit or access partially-written export files.',
         requiredAssets: [],
         revealsNodes: [],
@@ -541,6 +567,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'graphql_introspect',
         name: 'GraphQL Introspection',
+        hint: 'What\'s the full schema?',
         description: 'Run an introspection query to dump the full schema and discover internal mutations.',
         requiredAssets: [],
         revealsNodes: [],
@@ -549,6 +576,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'graphql_sqli',
         name: 'GraphQL SQL Injection',
+        hint: 'Is the database exposed here?',
         description: 'Inject SQL payloads into GraphQL query arguments to extract data from the backend database.',
         requiredAssets: [],
         revealsNodes: [],
@@ -557,6 +585,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'graphql_dos',
         name: 'GraphQL Nested Query DoS',
+        hint: 'Can you exhaust the server?',
         description: 'Craft deeply nested queries to exhaust server resources and test for rate limiting.',
         requiredAssets: [],
         revealsNodes: [],
@@ -587,6 +616,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'upload_webshell',
         name: 'Web Shell Upload',
+        hint: 'Can you get code execution?',
         description: 'Upload a PHP/JSP web shell disguised as an image to achieve remote code execution.',
         requiredAssets: [],
         revealsNodes: [],
@@ -595,6 +625,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'upload_path_traversal',
         name: 'Path Traversal via Filename',
+        hint: 'Where do files end up?',
         description: 'Use directory traversal sequences in the filename to write files outside the upload directory.',
         requiredAssets: [],
         revealsNodes: [],
@@ -603,6 +634,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'upload_xxe',
         name: 'XXE via SVG Upload',
+        hint: 'Does the parser trust input?',
         description: 'Upload a crafted SVG file with embedded XML External Entity payloads to read server files.',
         requiredAssets: [],
         revealsNodes: [],
@@ -632,6 +664,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'search_sqli',
         name: 'SQL Injection via Search',
+        hint: 'Is search input sanitized?',
         description: 'Inject SQL payloads through the search query parameter to extract database contents.',
         requiredAssets: [],
         revealsNodes: [],
@@ -640,6 +673,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'search_xss',
         name: 'Reflected XSS via Search',
+        hint: 'Is output encoded properly?',
         description: 'Inject JavaScript payloads through the search parameter to test for reflected cross-site scripting.',
         requiredAssets: [],
         revealsNodes: [],
@@ -648,6 +682,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'search_nosql',
         name: 'NoSQL Injection',
+        hint: 'What database is behind this?',
         description: 'Test for MongoDB/NoSQL injection by injecting operator-based payloads into the query parameter.',
         requiredAssets: [],
         revealsNodes: [],
@@ -677,6 +712,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'webhook_forge',
         name: 'Forge Payment Event',
+        hint: 'Can you fake a payment?',
         description: 'Send a crafted Stripe webhook payload with a forged signature to mark orders as paid.',
         requiredAssets: [],
         revealsNodes: [],
@@ -685,6 +721,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'webhook_replay',
         name: 'Webhook Replay Attack',
+        hint: 'Can old events be reused?',
         description: 'Replay a previously captured webhook event to trigger duplicate payment processing.',
         requiredAssets: [],
         revealsNodes: [],
@@ -693,6 +730,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'webhook_idor',
         name: 'IDOR via Order ID',
+        hint: 'Whose order is this really?',
         description: 'Manipulate the order_id in the webhook payload to associate payments with different user accounts.',
         requiredAssets: [],
         revealsNodes: [],
@@ -724,6 +762,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'ssrf_probe',
         name: 'SSRF Probe',
+        hint: 'What can the server reach?',
         description: 'The employee portal has a URL fetch feature (e.g. for importing supplier data). Test for Server-Side Request Forgery to discover internal services.',
         requiredAssets: ['credentials'],
         revealsNodes: ['admin_create_endpoint', 'internal_monitoring', 'internal_wiki', 'internal_jenkins'],
@@ -735,6 +774,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'employee_enum',
         name: 'Employee Feature Enumeration',
+        hint: 'What else is available here?',
         description: 'Enumerate available features and internal tools accessible through the employee portal.',
         requiredAssets: ['credentials'],
         revealsNodes: [],
@@ -769,6 +809,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'ssrf_create_admin',
         name: 'SSRF — Create Admin User',
+        hint: 'Can you provision access?',
         description: 'Use the employee portal SSRF to send a POST request to the internal admin creation endpoint. Since it has no auth, the request succeeds and a new admin account is created.',
         requiredAssets: ['api_key'],
         revealsNodes: ['ping_microservice'],
@@ -800,6 +841,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'ping_command_injection',
         name: 'Command Injection via Ping',
+        hint: 'Is the input passed to a shell?',
         description: 'The /ping endpoint passes the host parameter directly into a system shell command without sanitization. Inject shell metacharacters (e.g. ;, |, $(…)) to execute arbitrary commands on the internal server.',
         requiredAssets: ['credentials'],
         revealsNodes: [],
@@ -835,6 +877,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'grafana_default_creds',
         name: 'Grafana Default Credentials',
+        hint: 'Were defaults ever changed?',
         description: 'Attempt login with admin:admin and other default Grafana credentials.',
         requiredAssets: ['api_key'],
         revealsNodes: [],
@@ -843,6 +886,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'grafana_ssrf_access',
         name: 'SSRF to Grafana API',
+        hint: 'Can you reach it indirectly?',
         description: 'Use the employee portal SSRF to access Grafana API endpoints and extract dashboard data or data source credentials.',
         requiredAssets: ['api_key'],
         revealsNodes: [],
@@ -851,6 +895,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'grafana_cve',
         name: 'Grafana Path Traversal (CVE-2021-43798)',
+        hint: 'Any known vulnerabilities?',
         description: 'Test for the known Grafana path traversal vulnerability to read arbitrary files from the server.',
         requiredAssets: ['api_key'],
         revealsNodes: [],
@@ -878,6 +923,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'confluence_rce',
         name: 'Confluence OGNL Injection (CVE-2022-26134)',
+        hint: 'Does the template engine trust input?',
         description: 'Exploit the critical Confluence OGNL injection vulnerability for remote code execution.',
         requiredAssets: ['api_key'],
         revealsNodes: [],
@@ -886,6 +932,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'confluence_search',
         name: 'Search for Credentials in Wiki',
+        hint: 'Are there secrets in the docs?',
         description: 'Use SSRF to search Confluence pages for hardcoded passwords, API keys, and connection strings.',
         requiredAssets: ['api_key'],
         revealsNodes: [],
@@ -914,6 +961,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'jenkins_script_console',
         name: 'Jenkins Script Console RCE',
+        hint: 'Can you run arbitrary code?',
         description: 'Access the Groovy script console to execute arbitrary commands on the Jenkins server.',
         requiredAssets: ['api_key'],
         revealsNodes: [],
@@ -922,6 +970,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'jenkins_cred_dump',
         name: 'Jenkins Credential Dump',
+        hint: 'Where are credentials stored?',
         description: 'Extract stored credentials from Jenkins using the credentials API or by reading credentials.xml.',
         requiredAssets: ['api_key'],
         revealsNodes: [],
@@ -930,6 +979,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'jenkins_pipeline_secrets',
         name: 'Pipeline Environment Secrets',
+        hint: 'What\'s hardcoded in the pipeline?',
         description: 'Enumerate pipeline configurations to find hardcoded secrets, cloud access keys, and database passwords.',
         requiredAssets: ['api_key'],
         revealsNodes: [],
@@ -963,6 +1013,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'ntlm_relay',
         name: 'NTLM Credential Relay',
+        hint: 'Can you reuse auth elsewhere?',
         description: 'Intercept NTLM challenge/response to relay credentials against internal services.',
         requiredAssets: [],
         revealsNodes: [],
@@ -972,6 +1023,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'credential_sniff',
         name: 'Credential Sniffing',
+        hint: 'Is traffic encrypted?',
         description: 'Capture authentication credentials transmitted during SMTP relay sessions.',
         requiredAssets: [],
         revealsNodes: [],
@@ -981,6 +1033,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'internal_phish',
         name: 'Internal Phishing via Relay',
+        hint: 'Can you reach internal users?',
         description: 'Abuse the internal relay to send phishing emails to @corp.target.com addresses.',
         requiredAssets: [],
         revealsNodes: [],
@@ -1010,6 +1063,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'session_hijack',
         name: 'Session Hijacking',
+        hint: 'Can you impersonate someone?',
         description: 'Steal active session tokens from Redis keyspace to impersonate logged-in users.',
         requiredAssets: [],
         revealsNodes: [],
@@ -1019,6 +1073,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'token_replay',
         name: 'Token Replay Attack',
+        hint: 'Do sessions expire properly?',
         description: 'Replay captured JWT tokens to establish authenticated sessions without credentials.',
         requiredAssets: [],
         revealsNodes: [],
@@ -1028,6 +1083,7 @@ export const sampleNodes: PentestNode[] = [
       {
         id: 'admin_session_steal',
         name: 'Admin Session Theft',
+        hint: 'Any high-privilege sessions?',
         description: 'Target sess:admin:* keys specifically to steal administrator session tokens.',
         requiredAssets: [],
         revealsNodes: [],

@@ -3,6 +3,8 @@ import type { PentestNode, Asset, ActionResult, Difficulty } from '../data/types
 import { sampleNodes } from '../data/sampleTree';
 import { sendPrompt, LLM_NEEDS_KEY, LLM_PROVIDER } from '../services/llm';
 
+export const PROMPT_LIMITS: Record<Difficulty, number> = { easy: 8, normal: 6, hard: 4 };
+
 interface PromptMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -21,6 +23,7 @@ interface GameState {
   pendingPromptText: string;
   difficulty: Difficulty;
   nodeFailures: Record<string, number>;
+  nodePromptsRemaining: Record<string, number>;
   capturedFlag: { id: string; value: string } | null;
   capturedFlags: string[];
 
@@ -51,6 +54,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   pendingPromptText: '',
   difficulty: (localStorage.getItem('peter-difficulty') as Difficulty) || 'normal',
   nodeFailures: {},
+  nodePromptsRemaining: {},
   capturedFlag: null,
   capturedFlags: [],
 
@@ -59,8 +63,25 @@ export const useGameStore = create<GameState>((set, get) => ({
   setPendingPromptText: (text) => set({ pendingPromptText: text }),
 
   setDifficulty: (d) => {
+    const oldLimit = PROMPT_LIMITS[get().difficulty];
+    const newLimit = PROMPT_LIMITS[d];
+    const reduction = oldLimit - newLimit;
     localStorage.setItem('peter-difficulty', d);
-    set({ difficulty: d });
+    set((state) => {
+      const updated = { ...state.nodePromptsRemaining };
+      for (const nodeId in updated) {
+        if (reduction > 0) {
+          // Going harder: subtract, but keep current if remaining <= reduction
+          if (updated[nodeId] > reduction) {
+            updated[nodeId] -= reduction;
+          }
+        } else {
+          // Going easier: add the difference
+          updated[nodeId] += Math.abs(reduction);
+        }
+      }
+      return { difficulty: d, nodePromptsRemaining: updated };
+    });
   },
 
   hasAsset: (type) => get().assets.some((a) => a.type === type),
@@ -95,6 +116,23 @@ export const useGameStore = create<GameState>((set, get) => ({
     const node = state.nodes.get(nodeId);
     if (!node) return;
 
+    // Check per-node prompt limit
+    const remaining = state.nodePromptsRemaining[nodeId] ?? PROMPT_LIMITS[state.difficulty];
+    if (remaining <= 0) {
+      const nodeHistory = state.promptHistory[nodeId] || [];
+      set({
+        promptHistory: {
+          ...state.promptHistory,
+          [nodeId]: [
+            ...nodeHistory,
+            { role: 'user' as const, content: prompt },
+            { role: 'assistant' as const, content: 'No prompts remaining for this node. Try a different approach or adjust difficulty.', success: false },
+          ],
+        },
+      });
+      return;
+    }
+
     if (LLM_NEEDS_KEY && !state.apiKey) {
       set({
         actionResult: {
@@ -106,6 +144,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       });
       return;
     }
+
+    // Decrement prompt budget for this node
+    set((s) => ({
+      nodePromptsRemaining: {
+        ...s.nodePromptsRemaining,
+        [nodeId]: (s.nodePromptsRemaining[nodeId] ?? PROMPT_LIMITS[s.difficulty]) - 1,
+      },
+    }));
 
     // Add user message to history
     const nodeHistory = state.promptHistory[nodeId] || [];

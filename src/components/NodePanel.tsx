@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useGameStore } from '../store/gameStore';
+import { useGameStore, PROMPT_LIMITS } from '../store/gameStore';
 import ActionCard from './ActionCard';
 import type { InfoSeverity } from '../data/types';
 
@@ -34,10 +34,17 @@ export default function NodePanel() {
   const setPendingPromptText = useGameStore((s) => s.setPendingPromptText);
   const difficulty = useGameStore((s) => s.difficulty);
   const nodeFailures = useGameStore((s) => s.nodeFailures);
+  const nodePromptsRemaining = useGameStore((s) => s.nodePromptsRemaining);
   const node = selectedNodeId ? nodes.get(selectedNodeId) : null;
+
+  const promptsRemaining = selectedNodeId
+    ? (nodePromptsRemaining[selectedNodeId] ?? PROMPT_LIMITS[difficulty])
+    : 0;
+  const promptsExhausted = promptsRemaining <= 0;
 
   const [input, setInput] = useState('');
   const [showServiceInfo, setShowServiceInfo] = useState(false);
+  const [hintWarning, setHintWarning] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -64,15 +71,26 @@ export default function NodePanel() {
   const handleSend = () => {
     const text = input.trim();
     if (!text || !selectedNodeId || executingAction) return;
+
+    // Block bare hint submissions
+    if (node) {
+      const hints = node.possibleActions
+        .filter((a) => a.showAsHint !== false && a.hint)
+        .map((a) => a.hint!.toLowerCase());
+      if (hints.includes(text.toLowerCase())) {
+        setHintWarning(text);
+        return;
+      }
+    }
+
     setInput('');
     executePrompt(selectedNodeId, text);
   };
 
   const handleHintClick = (text: string) => {
-    if (!selectedNodeId || executingAction) return;
-    const prompt = input.trim() ? `${input.trim()} — ${text}` : text;
-    setInput('');
-    executePrompt(selectedNodeId, prompt);
+    if (!selectedNodeId || executingAction || promptsExhausted) return;
+    setInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
+    inputRef.current?.focus();
   };
 
   return (
@@ -267,14 +285,26 @@ export default function NodePanel() {
             borderTop: '1px solid #2a3a5c',
             background: 'rgba(10,14,23,0.8)',
           }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              marginBottom: 6, fontSize: 11, fontFamily: 'monospace',
+            }}>
+              <span style={{
+                color: promptsExhausted ? '#ff3366' : promptsRemaining <= 2 ? '#ffc107' : '#94a3b8',
+              }}>
+                {promptsExhausted
+                  ? 'No prompts remaining'
+                  : `${promptsRemaining} / ${PROMPT_LIMITS[difficulty]} prompts remaining`}
+              </span>
+            </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <input
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder={executingAction ? 'Executing...' : 'What do you want to try?'}
-                disabled={executingAction}
+                placeholder={promptsExhausted ? 'No prompts remaining' : executingAction ? 'Executing...' : 'What do you want to try?'}
+                disabled={executingAction || promptsExhausted}
                 style={{
                   flex: 1,
                   padding: '10px 14px',
@@ -285,26 +315,75 @@ export default function NodePanel() {
                   fontSize: 13,
                   fontFamily: 'monospace',
                   outline: 'none',
+                  opacity: promptsExhausted ? 0.5 : 1,
                 }}
               />
               <button
                 onClick={handleSend}
-                disabled={executingAction || !input.trim()}
+                disabled={executingAction || promptsExhausted || !input.trim()}
                 style={{
                   padding: '10px 16px',
                   borderRadius: 8,
                   border: '1px solid rgba(0,240,255,0.3)',
-                  background: executingAction || !input.trim() ? 'rgba(17,24,39,0.8)' : 'rgba(0,240,255,0.15)',
-                  color: executingAction || !input.trim() ? '#94a3b8' : '#00f0ff',
+                  background: executingAction || promptsExhausted || !input.trim() ? 'rgba(17,24,39,0.8)' : 'rgba(0,240,255,0.15)',
+                  color: executingAction || promptsExhausted || !input.trim() ? '#94a3b8' : '#00f0ff',
                   fontWeight: 700,
                   fontSize: 12,
-                  cursor: executingAction || !input.trim() ? 'not-allowed' : 'pointer',
+                  cursor: executingAction || promptsExhausted || !input.trim() ? 'not-allowed' : 'pointer',
                 }}
               >
                 {executingAction ? '...' : '▶'}
               </button>
             </div>
           </div>
+        </motion.div>
+      )}
+
+      {/* Hint warning modal */}
+      {hintWarning && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setHintWarning(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+            backdropFilter: 'blur(4px)', zIndex: 200,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <motion.div
+            initial={{ scale: 0.85, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#111827', border: '1px solid #ff9900',
+              borderRadius: 12, padding: 24, maxWidth: 380, width: '90%',
+              textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: 32, marginBottom: 12 }}>&#x26A0;</div>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: '#ffc107', marginBottom: 8 }}>
+              Be more specific
+            </h3>
+            <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.6, marginBottom: 16 }}>
+              "{hintWarning}" is too vague. Describe the specific technique or tool you want to use and what you're trying to achieve.
+            </p>
+            <button
+              onClick={() => {
+                setHintWarning(null);
+                inputRef.current?.focus();
+              }}
+              style={{
+                width: '100%', padding: '10px 0', borderRadius: 8,
+                background: 'rgba(255,193,7,0.15)', border: '1px solid rgba(255,193,7,0.3)',
+                color: '#ffc107', fontWeight: 700, fontSize: 12,
+                textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer',
+              }}
+            >
+              Try Again
+            </button>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>

@@ -13,6 +13,7 @@ export interface Action {
   revealsAssets?: { type: AssetType; name: string; value: string }[];
   category: ActionCategory;
   showAsHint?: boolean;
+  hint?: string;
 }
 
 export type InfoSeverity = 'critical' | 'high' | 'medium' | 'info';

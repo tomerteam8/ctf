@@ -18,7 +18,7 @@ const LLM_MODEL: string =
 function getDifficultyInstructions(difficulty: Difficulty): string {
   switch (difficulty) {
     case 'easy':
-      return '\n\nDIFFICULTY: EASY — Be very lenient. If the user\'s prompt is even loosely related to an action, match it and succeed. Accept vague references to assets.';
+      return '\n\nDIFFICULTY: EASY — Be lenient. Accept loose descriptions of techniques. However, the user MUST describe a technique, tool, or specific action they are performing — not just ask a question. Prompts that are only questions (e.g. "What services are running?", "Is access open?", "Can you see others\' data?") without describing HOW they plan to find out MUST fail. The user needs to name a tool, technique, or attack method. Accept vague references to assets.';
     case 'normal':
       return '\n\nDIFFICULTY: NORMAL — Be moderate. The user should clearly describe what they want to do. They must reference required assets by name or type. CRITICAL: If an action has required assets, the user MUST explicitly mention the asset name or value in their prompt. If they do not, you MUST set success to false. No exceptions.';
     case 'hard':
@@ -62,8 +62,10 @@ Based on the user's prompt, determine:
 
 IMPORTANT RULES:
 - All actions are available to attempt. There are no locked actions.
+- STRICT ACTION MATCHING: Only match an action if the user's described technique is specifically what the action represents. Do NOT match loosely by category. For example, directory enumeration (gobuster, dirb, dirbuster) is NOT the same as port scanning (nmap); SQL injection is NOT the same as XSS. If the user describes a valid security technique that does not correspond to any listed action, set matchedActionId to null, set success to false, and show realistic output of the technique running but finding nothing useful (e.g. "0 results found", "no vulnerable endpoints discovered", timeouts, 403s).
+- QUESTIONS ARE NOT ACTIONS: If the user's prompt is only a question (e.g. "What services are running?", "Is the database exposed?", "Can you escalate your role?") without describing a specific technique, tool, or method, you MUST set matchedActionId to null and success to false. Respond with a message like "You need to specify what technique or tool you want to use." The user must describe HOW they plan to attack, not just WHAT they want to know.
 - If an action requires assets, it only succeeds if the user explicitly references or uses the required asset in their prompt. If they try the action without mentioning the asset, it should FAIL with realistic error output showing why (e.g. "Access denied", "Authentication required", "Missing credentials").
-- If no action matches the prompt, set matchedActionId to null and provide a helpful message suggesting available actions.
+- If no action matches the prompt, set matchedActionId to null, set success to false, and provide realistic terminal output showing the technique was attempted but yielded no useful results. Include a brief message suggesting the user try a different approach.
 - The revealedNodes and revealedAssets MUST come exactly from the matched action's definition (listed above). Do NOT invent new ones.
 - If success is false, revealedNodes and revealedAssets should be empty arrays.
 
