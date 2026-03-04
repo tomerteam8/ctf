@@ -99,7 +99,7 @@ function parseResponse(content: string | Record<string, unknown>): LLMResponse {
   return {
     matchedActionId: parsed.matchedActionId ?? null,
     success: parsed.success ?? false,
-    logs: (parsed.logs ?? []).map((l) => typeof l === 'string' ? l : String(l ?? '')),
+    logs: (parsed.logs ?? []).map((l: unknown) => typeof l === 'string' ? l : String(l ?? '')),
     message: parsed.message ?? '',
     revealedNodes: parsed.revealedNodes ?? [],
     revealedAssets: parsed.revealedAssets ?? [],
