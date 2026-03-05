@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import type { Difficulty } from '../data/types';
 import { LLM_PROVIDER, LLM_NEEDS_KEY } from '../services/llm';
+import type { AppView } from '../App';
 
 const st = {
   bar: {
@@ -24,7 +25,7 @@ const st = {
   }),
 };
 
-export default function Header() {
+export default function Header({ view, onViewChange }: { view: AppView; onViewChange: (v: AppView) => void }) {
   const nodes = useGameStore((s) => s.nodes);
   const assets = useGameStore((s) => s.assets);
   const apiKey = useGameStore((s) => s.apiKey);
@@ -59,6 +60,35 @@ export default function Header() {
           <span style={st.title}>{text}<span style={st.caret} /></span>
           <span style={st.sub}>Pentest Quest</span>
         </div>
+        {/* view toggle */}
+        <div style={{ display: 'flex', gap: 2, background: 'rgba(10,14,23,0.6)', borderRadius: 8, padding: 3 }}>
+          {(['graph', 'network'] as AppView[]).map((v) => {
+            const active = view === v;
+            const labels: Record<AppView, string> = { graph: '⬡  Attack Graph', network: '🗺  Network Map' };
+            return (
+              <button
+                key={v}
+                onClick={() => onViewChange(v)}
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: 6,
+                  border: active ? '1px solid rgba(0,240,255,0.4)' : '1px solid transparent',
+                  background: active ? 'rgba(0,240,255,0.12)' : 'transparent',
+                  color: active ? '#00f0ff' : '#64748b',
+                  fontWeight: active ? 700 : 400,
+                  fontSize: 11,
+                  cursor: 'pointer',
+                  letterSpacing: '0.05em',
+                  transition: 'all 0.15s',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {labels[v]}
+              </button>
+            );
+          })}
+        </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={st.stat}><span style={{ ...st.statNum, color: '#00f0ff' }}>{discovered}</span> / {nodes.size} nodes</span>
           <span style={st.stat}><span style={{ ...st.statNum, color: '#00ff88' }}>{assets.length}</span> assets</span>
