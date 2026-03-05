@@ -228,7 +228,6 @@ export default function NodePanel() {
                       <ActionCard
                         key={action.id}
                         action={action}
-                        nodeId={node.id}
                         onClickHint={handleHintClick}
                       />
                     ))}

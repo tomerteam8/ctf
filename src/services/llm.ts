@@ -64,22 +64,26 @@ IMPORTANT RULES:
 - All actions are available to attempt. There are no locked actions.
 - STRICT ACTION MATCHING: Only match an action if the user's described technique is specifically what the action represents. Do NOT match loosely by category. For example, directory enumeration (gobuster, dirb, dirbuster) is NOT the same as port scanning (nmap); SQL injection is NOT the same as XSS. If the user describes a valid security technique that does not correspond to any listed action, set matchedActionId to null, set success to false, and show realistic output of the technique running but finding nothing useful (e.g. "0 results found", "no vulnerable endpoints discovered", timeouts, 403s).
 - QUESTIONS ARE NOT ACTIONS: If the user's prompt is only a question (e.g. "What services are running?", "Is the database exposed?", "Can you escalate your role?") without describing a specific technique, tool, or method, you MUST set matchedActionId to null and success to false. Respond with a message like "You need to specify what technique or tool you want to use." The user must describe HOW they plan to attack, not just WHAT they want to know.
-- If an action requires assets, it only succeeds if the user explicitly references or uses the required asset in their prompt. If they try the action without mentioning the asset, it should FAIL with realistic error output showing why (e.g. "Access denied", "Authentication required", "Missing credentials").
+- ASSET REQUIREMENTS (Normal/Hard only): If an action requires assets, it only succeeds if the user explicitly references or uses the required asset in their prompt. If they try the action without mentioning the asset, it should FAIL with realistic error output showing why (e.g. "Access denied", "Authentication required", "Missing credentials"). On Easy difficulty, accept vague references to assets without strict matching.
 - If no action matches the prompt, set matchedActionId to null, set success to false, and provide realistic terminal output showing the technique was attempted but yielded no useful results. Include a brief message suggesting the user try a different approach.
 - The revealedNodes and revealedAssets MUST come exactly from the matched action's definition (listed above). Do NOT invent new ones.
 - If success is false, revealedNodes and revealedAssets should be empty arrays.
 
 LOG OUTPUT GUIDELINES — make the terminal logs immersive and specific to what the user typed:
-- Mirror the tools/techniques the user mentioned (nmap, sqlmap, curl, gobuster, burpsuite, etc.)
+- CRITICAL: The logs MUST match the technique the user described. If they said SSRF, show HTTP requests to internal IPs. If they said nmap, show port scan output. If they said SQLi, show SQL payloads. NEVER mix techniques — e.g. do NOT show SQL syntax for an SSRF attack, do NOT show port scans for directory enumeration.
+- Mirror the exact tools/techniques the user mentioned (nmap, sqlmap, curl, gobuster, burpsuite, etc.)
 - Include realistic details: IP addresses, ports, HTTP status codes, response sizes, timestamps
 - For scans: show discovered ports/services progressively, include version info
 - For SQL injection: show payloads attempted, server responses, extracted data
-- For SSRF: show crafted URLs, internal responses, discovered endpoints
+- For SSRF: show crafted URLs targeting internal IPs (e.g. http://10.0.0.x), server responses, discovered internal endpoints
 - For enumeration: show directory paths, status codes, response sizes
 - For brute force: show attempts, failures, then the successful combo
 - On failure: show realistic error output (connection refused, 403 forbidden, WAF blocks, timeouts)
 - Vary the style — not every line should start with ">". Mix command prompts ($), tool output, status lines, and raw data
 - Include the target URL/IP from the current node's baseUrl in the output
+
+Valid asset types: api_key, credentials, db_credentials, logic_flaw, token, certificate
+Valid action categories: recon, exploit, enumeration, analysis
 
 Respond ONLY with JSON in this exact format (no markdown, no code fences, just raw JSON):
 {

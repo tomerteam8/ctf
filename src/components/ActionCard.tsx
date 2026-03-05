@@ -10,7 +10,6 @@ export default function ActionCard({
   onClickHint,
 }: {
   action: Action;
-  nodeId: string;
   onClickHint: (text: string) => void;
 }) {
   const color = catColor[action.category] || '#00f0ff';

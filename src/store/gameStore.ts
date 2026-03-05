@@ -172,12 +172,6 @@ export const useGameStore = create<GameState>((set, get) => ({
         state.difficulty
       );
 
-      // Add assistant response to history (tagged with success/failure)
-      const historyWithResponse = [
-        ...updatedHistory,
-        { role: 'assistant' as const, content: llmResponse.message, success: llmResponse.success },
-      ];
-
       // Find the matched action to get its reveals
       const matchedAction = llmResponse.matchedActionId
         ? node.possibleActions.find((a) => a.id === llmResponse.matchedActionId)
@@ -218,6 +212,12 @@ export const useGameStore = create<GameState>((set, get) => ({
           }
         }
       }
+
+      // Add assistant response to history (after asset guard so it reflects final success/failure)
+      const historyWithResponse = [
+        ...updatedHistory,
+        { role: 'assistant' as const, content: llmResponse.message, success: llmResponse.success },
+      ];
 
       // Build revealed assets from the action definition (not from GPT's response)
       const revealedAssets: Asset[] =
@@ -277,6 +277,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           nodes,
           assets: [...s.assets, ...revealedAssets],
           executingAction: false,
+          executingPrompt: '',
           nodeFailures,
           capturedFlag: flag ?? s.capturedFlag,
           capturedFlags,
@@ -287,6 +288,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             revealedNodes,
             revealedAssets,
             logs: llmResponse.logs,
+            matchedActionId: llmResponse.matchedActionId,
           },
         };
       });
@@ -294,10 +296,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       const historyWithError = [
         ...updatedHistory,
-        { role: 'assistant' as const, content: `Error: ${errorMsg}` },
+        { role: 'assistant' as const, content: `Error: ${errorMsg}`, success: false },
       ];
       set((s) => ({
         executingAction: false,
+        executingPrompt: '',
         promptHistory: { ...s.promptHistory, [nodeId]: historyWithError },
         actionResult: {
           success: false,

@@ -692,6 +692,74 @@ function buildFallbackLines(prompt: string, nodeTitle: string, baseUrl: string):
   ];
 }
 
+// Actions with business impact — tints the success modal red.
+// Severity levels: 'moderate' (slight), 'severe' (medium), 'critical' (strong red).
+type ImpactSeverity = 'moderate' | 'severe' | 'critical';
+const BUSINESS_IMPACT_ACTIONS: Record<string, ImpactSeverity> = {
+  // === Critical — catastrophic breach ===
+  full_db_exfiltration: 'critical',
+  pii_exfiltration: 'critical',
+  payroll_data_access: 'critical',
+  ping_command_injection: 'critical',
+  refund_redirect: 'critical',
+
+  // === Severe — significant damage ===
+  bulk_customer_export: 'severe',
+  payment_info_harvest: 'severe',
+  cloud_credential_theft: 'severe',
+  ssrf_create_admin: 'severe',
+  sqli_data_exfil: 'severe',
+  upload_webshell: 'severe',
+  admin_session_steal: 'severe',
+  jenkins_script_console: 'severe',
+
+  // === Moderate — concerning but contained ===
+  sqli_user_type: 'moderate',
+  crack_password_hashes: 'moderate',
+  zero_inventory: 'moderate',
+  supplier_data_exfil: 'moderate',
+  vendor_payment_exfil: 'moderate',
+  store_credit_fraud: 'moderate',
+  ftp_anon_login: 'moderate',
+  webhook_forge: 'moderate',
+  webhook_idor: 'moderate',
+  contact_account_takeover: 'moderate',
+  session_hijack: 'moderate',
+  export_idor: 'moderate',
+  internal_phish: 'moderate',
+  redis_rce: 'moderate',
+  confluence_rce: 'moderate',
+  jenkins_cred_dump: 'moderate',
+  shipment_redirect: 'moderate',
+};
+
+const IMPACT_STYLES: Record<ImpactSeverity, { border: string; bg: string; headerColor: string; buttonBg: string; buttonBorder: string; buttonColor: string }> = {
+  moderate: {
+    border: '1px solid rgba(255,150,50,0.4)',
+    bg: 'linear-gradient(180deg, rgba(255,100,50,0.08) 0%, #111827 40%)',
+    headerColor: '#ffaa44',
+    buttonBg: 'rgba(255,150,50,0.15)',
+    buttonBorder: '1px solid rgba(255,150,50,0.3)',
+    buttonColor: '#ffaa44',
+  },
+  severe: {
+    border: '1px solid rgba(255,51,102,0.4)',
+    bg: 'linear-gradient(180deg, rgba(255,51,102,0.12) 0%, #111827 40%)',
+    headerColor: '#ff6680',
+    buttonBg: 'rgba(255,51,102,0.15)',
+    buttonBorder: '1px solid rgba(255,51,102,0.3)',
+    buttonColor: '#ff6680',
+  },
+  critical: {
+    border: '1px solid rgba(255,30,60,0.5)',
+    bg: 'linear-gradient(180deg, rgba(255,30,60,0.18) 0%, #111827 40%)',
+    headerColor: '#ff3366',
+    buttonBg: 'rgba(255,30,60,0.2)',
+    buttonBorder: '1px solid rgba(255,30,60,0.4)',
+    buttonColor: '#ff3366',
+  },
+};
+
 export default function ActionResultModal() {
   const actionResult = useGameStore((s) => s.actionResult);
   const executingAction = useGameStore((s) => s.executingAction);
@@ -748,6 +816,12 @@ export default function ActionResultModal() {
   const show = executingAction || actionResult;
   const showingTerminal = executingAction || (actionResult && !showResult);
 
+  // Compute business-impact severity for the modal card styling
+  const cardImpact = actionResult?.success && actionResult.matchedActionId && showResult
+    ? BUSINESS_IMPACT_ACTIONS[actionResult.matchedActionId] ?? null
+    : null;
+  const cardImpactStyle = cardImpact ? IMPACT_STYLES[cardImpact] : null;
+
   return (
     <AnimatePresence>
       {show && (
@@ -764,7 +838,9 @@ export default function ActionResultModal() {
             initial={{ scale: 0.8, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.8, y: 20 }}
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: '#111827', border: '1px solid #2a3a5c', borderRadius: 12,
+              background: cardImpactStyle?.bg ?? '#111827',
+              border: cardImpactStyle?.border ?? '1px solid #2a3a5c',
+              borderRadius: 12,
               padding: 24, maxWidth: 560, width: '90%',
             }}
           >
@@ -800,20 +876,27 @@ export default function ActionResultModal() {
                   <span style={{ display: 'inline-block', width: 8, height: 16, background: '#00f0ff', animation: 'blink 1s step-end infinite' }} />
                 </div>
               </div>
-            ) : actionResult && showResult ? (
+            ) : actionResult && showResult ? (() => {
+              const impact = actionResult.success && actionResult.matchedActionId
+                ? BUSINESS_IMPACT_ACTIONS[actionResult.matchedActionId] ?? null
+                : null;
+              const impactStyle = impact ? IMPACT_STYLES[impact] : null;
+              return (
               <div>
                 <motion.div
                   initial={{ scale: 0 }} animate={{ scale: 1 }}
                   transition={{ type: 'spring', stiffness: 400 }}
                   style={{ textAlign: 'center', fontSize: 40, marginBottom: 12 }}
                 >
-                  {actionResult.success ? '✅' : '❌'}
+                  {actionResult.success ? (impact ? '⚠️' : '✅') : '❌'}
                 </motion.div>
                 <h3 style={{
                   textAlign: 'center', fontSize: 16, fontWeight: 700, marginBottom: 8,
-                  color: actionResult.success ? '#00ff88' : '#ff3366',
+                  color: actionResult.success ? (impactStyle?.headerColor ?? '#00ff88') : '#ff3366',
                 }}>
-                  {actionResult.success ? 'ACTION SUCCESSFUL' : 'ACTION FAILED'}
+                  {actionResult.success
+                    ? (impact ? 'BREACH SUCCESSFUL' : 'ACTION SUCCESSFUL')
+                    : 'ACTION FAILED'}
                 </h3>
                 <p style={{ textAlign: 'center', fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>
                   {actionResult.message}
@@ -850,15 +933,18 @@ export default function ActionResultModal() {
                   onClick={clearActionResult}
                   style={{
                     width: '100%', padding: '10px 0', borderRadius: 8,
-                    background: 'rgba(0,240,255,0.15)', border: '1px solid rgba(0,240,255,0.3)',
-                    color: '#00f0ff', fontWeight: 700, fontSize: 12,
+                    background: impactStyle?.buttonBg ?? 'rgba(0,240,255,0.15)',
+                    border: impactStyle?.buttonBorder ?? '1px solid rgba(0,240,255,0.3)',
+                    color: impactStyle?.buttonColor ?? '#00f0ff',
+                    fontWeight: 700, fontSize: 12,
                     textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer',
                   }}
                 >
                   Continue
                 </button>
               </div>
-            ) : null}
+              );
+            })() : null}
           </motion.div>
         </motion.div>
       )}

@@ -52,6 +52,7 @@ export interface ActionResult {
   revealedNodes: string[];
   revealedAssets: Asset[];
   logs?: string[];
+  matchedActionId?: string | null;
 }
 
 export interface LLMResponse {

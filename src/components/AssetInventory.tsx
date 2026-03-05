@@ -11,6 +11,7 @@ const assetIcons: Record<AssetType, string> = {
 export default function AssetInventory() {
   const assets = useGameStore((s) => s.assets);
   const selectedNodeId = useGameStore((s) => s.selectedNodeId);
+  const executingAction = useGameStore((s) => s.executingAction);
   const setPendingPromptText = useGameStore((s) => s.setPendingPromptText);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -51,7 +52,7 @@ export default function AssetInventory() {
                   Asset Inventory
                 </span>
                 <button onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 16 }}>
-                  \u2715
+                  {'\u2715'}
                 </button>
               </div>
 
@@ -77,15 +78,16 @@ export default function AssetInventory() {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => {
-                          if (selectedNodeId) {
+                          if (selectedNodeId && !executingAction) {
                             setPendingPromptText(`Use ${asset.name}: ${asset.value}`);
                           }
                         }}
-                        title={selectedNodeId ? 'Click to use in prompt' : 'Select a node first'}
+                        title={executingAction ? 'Wait for action to complete' : selectedNodeId ? 'Click to use in prompt' : 'Select a node first'}
                         style={{
                           padding: 10, marginBottom: 6, borderRadius: 8,
                           background: 'rgba(26,34,53,0.5)', border: '1px solid #2a3a5c',
-                          cursor: selectedNodeId ? 'pointer' : 'default',
+                          cursor: selectedNodeId && !executingAction ? 'pointer' : 'default',
+                          opacity: executingAction ? 0.5 : 1,
                           transition: 'border-color 0.2s',
                         }}
                       >
