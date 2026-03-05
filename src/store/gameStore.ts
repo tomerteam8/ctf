@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { PentestNode, Asset, ActionResult, Difficulty } from '../data/types';
-import { sampleNodes } from '../data/sampleTree';
+import { sampleNodes } from '../data/gameData';
 import { sendPrompt, LLM_NEEDS_KEY, LLM_PROVIDER } from '../services/llm';
 
 export const PROMPT_LIMITS: Record<Difficulty, number> = { easy: 8, normal: 6, hard: 4 };

@@ -1,4 +1,4 @@
-import type { PentestNode } from './types';
+import type { PentestNode, NetworkDevice, NetworkEdge } from './types';
 
 export const sampleNodes: PentestNode[] = [
   // =========================================================================
@@ -11,6 +11,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'E-commerce platform. Begin reconnaissance to discover attack surfaces.',
     baseUrl: 'https://shop.target.com',
     type: 'internet_server',
+    ring: 5,
+    ip: '203.0.113.10',
+    port: '80/443',
+    zone: 'DMZ Web',
     serviceInfo: [
       { label: 'Server', value: 'nginx/1.24.0' },
       { label: 'OS', value: 'Ubuntu 22.04 LTS' },
@@ -55,6 +59,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Main e-commerce frontend. User accounts, product listings, and checkout flow.',
     baseUrl: 'https://shop.target.com/app',
     type: 'web_page',
+    ring: 4,
+    ip: '203.0.113.10',
+    port: '80/443',
+    zone: 'DMZ Web',
     serviceInfo: [
       { label: 'Framework', value: 'Express.js 4.18.2' },
       { label: 'Runtime', value: 'Node.js 18.17.0' },
@@ -100,6 +108,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'vsftpd 3.0.5 running on port 21. Anonymous login banner detected. Backup database dump detected in public directory — may contain production credentials. Could contain backup files, deployment scripts, or database dumps.',
     baseUrl: 'ftp://shop.target.com:21',
     type: 'internet_server',
+    ring: 5,
+    ip: '203.0.113.11',
+    port: '21',
+    zone: 'DMZ Network',
     serviceInfo: [
       { label: 'Software', value: 'vsftpd 3.0.5' },
       { label: 'Anonymous Login', value: 'Banner present but auth required' },
@@ -151,6 +163,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Postfix SMTP server on port 25. Handles corporate email for target.com. VRFY command enabled — responds with full mailbox paths. CRLF header injection accepted in MAIL FROM parameter. Internal relay discovered at mail-relay.internal:2525. Open relay testing and user enumeration may be possible.',
     baseUrl: 'smtp://mail.target.com:25',
     type: 'internet_server',
+    ring: 5,
+    ip: '203.0.113.12',
+    port: '25',
+    zone: 'DMZ Network',
     serviceInfo: [
       { label: 'Software', value: 'Postfix 3.7.6' },
       { label: 'SPF', value: 'v=spf1 include:_spf.target.com ~all' },
@@ -199,6 +215,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Redis 7.2 on port 6379. Exposed caching layer with requirepass enabled. The INFO command is accessible pre-authentication and leaks keyspace metadata — key names and counts are visible without AUTH, revealing sess:* session keys. Full key access requires authentication.',
     baseUrl: 'redis://shop.target.com:6379',
     type: 'database',
+    ring: 5,
+    ip: '203.0.113.13',
+    port: '6379',
+    zone: 'DMZ Network',
     serviceInfo: [
       { label: 'Version', value: 'Redis 7.2.4' },
       { label: 'Auth', value: 'requirepass enabled' },
@@ -253,6 +273,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Public sign-up endpoint for new customer accounts. Accepts email and password, returns a session JWT on success. The JWT encodes user_type as "user" by default.',
     baseUrl: 'https://shop.target.com/api/register',
     type: 'api',
+    ring: 3,
+    ip: '203.0.113.10',
+    port: '443',
+    zone: 'DMZ Web',
     serviceInfo: [
       { label: 'Method', value: 'POST' },
       { label: 'Content-Type', value: 'application/json' },
@@ -289,6 +313,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Displays the authenticated user\'s profile page — name, email, avatar, and account creation date. Read-only view with no editable fields.',
     baseUrl: 'https://shop.target.com/api/profile',
     type: 'web_page',
+    ring: 3,
+    ip: '203.0.113.10',
+    port: '443',
+    zone: 'DMZ Web',
     serviceInfo: [
       { label: 'Method', value: 'GET' },
       { label: 'Auth', value: 'Bearer JWT required' },
@@ -316,6 +344,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Paginated list of past orders with order ID, items, totals, and shipping status. Each order links to a detail view.',
     baseUrl: 'https://shop.target.com/api/orders',
     type: 'api',
+    ring: 3,
+    ip: '203.0.113.10',
+    port: '443',
+    zone: 'DMZ Web',
     serviceInfo: [
       { label: 'Method', value: 'GET' },
       { label: 'Auth', value: 'Bearer JWT required' },
@@ -344,6 +376,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Update email address and phone number. Email changes require confirmation via a verification link sent to the new address. Phone number changes take effect immediately.',
     baseUrl: 'https://shop.target.com/api/contact',
     type: 'api',
+    ring: 3,
+    ip: '203.0.113.10',
+    port: '443',
+    zone: 'DMZ Web',
     serviceInfo: [
       { label: 'Method', value: 'PUT' },
       { label: 'Auth', value: 'Bearer JWT required' },
@@ -373,6 +409,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'User password change API. Accepts user_type field in the request body alongside password fields. The backend runs a raw SQL UPDATE on the users table — columns include user_type (values: "user", "employee"). Employee accounts receive a staff discount on all purchases.',
     baseUrl: 'https://shop.target.com/api/change-password',
     type: 'api',
+    ring: 3,
+    ip: '203.0.113.10',
+    port: '443',
+    zone: 'DMZ Web',
     serviceInfo: [
       { label: 'Method', value: 'POST' },
       { label: 'Content-Type', value: 'application/json' },
@@ -440,6 +480,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Toggle email and push notification preferences — order updates, promotions, and security alerts. Simple boolean flags stored server-side.',
     baseUrl: 'https://shop.target.com/api/notifications/preferences',
     type: 'api',
+    ring: 3,
+    ip: '203.0.113.10',
+    port: '443',
+    zone: 'DMZ Web',
     serviceInfo: [
       { label: 'Method', value: 'PATCH' },
       { label: 'Auth', value: 'Bearer JWT required' },
@@ -467,6 +511,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Submit and view support tickets. Ticket body accepts Markdown with rendered HTML preview. File attachments up to 10MB. Support agents view tickets in an internal dashboard with full HTML rendering.',
     baseUrl: 'https://shop.target.com/api/support',
     type: 'web_page',
+    ring: 3,
+    ip: '203.0.113.10',
+    port: '443',
+    zone: 'DMZ Web',
     serviceInfo: [
       { label: 'Method', value: 'POST / GET' },
       { label: 'Auth', value: 'Bearer JWT required' },
@@ -515,6 +563,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'GDPR-compliant data export endpoint. Generates a ZIP archive of all user data — profile, orders, messages, activity logs. Export is async: request triggers a background job, download link emailed when ready.',
     baseUrl: 'https://shop.target.com/api/export',
     type: 'api',
+    ring: 3,
+    ip: '203.0.113.10',
+    port: '443',
+    zone: 'DMZ Web',
     serviceInfo: [
       { label: 'Method', value: 'POST (request) / GET (download)' },
       { label: 'Auth', value: 'Bearer JWT required' },
@@ -567,6 +619,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'GraphQL endpoint with GraphiQL playground enabled. Introspection queries may expose the full schema including internal types, mutations, and sensitive fields. Auth bypass possible via batch aliased mutations.',
     baseUrl: 'https://shop.target.com/graphql',
     type: 'api',
+    ring: 4,
+    ip: '203.0.113.10',
+    port: '/graphql',
+    zone: 'DMZ Web',
     serviceInfo: [
       { label: 'Engine', value: 'Apollo Server 4.9.5' },
       { label: 'Introspection', value: 'Disabled in production', severity: 'info' },
@@ -615,6 +671,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Product image upload API accepting multipart form data. File uploads are a classic vector for web shells, path traversal, and stored XSS.',
     baseUrl: 'https://shop.target.com/api/upload',
     type: 'api',
+    ring: 3,
+    ip: '203.0.113.10',
+    port: '443',
+    zone: 'DMZ Web',
     serviceInfo: [
       { label: 'Method', value: 'POST multipart/form-data' },
       { label: 'Max Size', value: '5MB' },
@@ -664,6 +724,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Full-text search endpoint with query parameter reflecting user input. Potential for SQL injection, XSS, or NoSQL injection depending on backend implementation.',
     baseUrl: 'https://shop.target.com/api/search?q=',
     type: 'api',
+    ring: 4,
+    ip: '203.0.113.10',
+    port: '/search',
+    zone: 'DMZ Web',
     serviceInfo: [
       { label: 'Engine', value: 'Elasticsearch 8.11.1' },
       { label: 'Input Sanitization', value: 'Query parameterized via ES DSL' },
@@ -712,6 +776,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Stripe payment webhook handler. Processes POST requests with payment confirmations. Improper signature verification could allow forged payment events and order manipulation.',
     baseUrl: 'https://shop.target.com/api/webhooks/payment',
     type: 'api',
+    ring: 4,
+    ip: '203.0.113.10',
+    port: '/webhooks',
+    zone: 'DMZ Web',
     serviceInfo: [
       { label: 'Provider', value: 'Stripe API v2023-10-16' },
       { label: 'Signature Verification', value: 'stripe.webhooks.constructEvent() with whsec_*' },
@@ -764,6 +832,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Internal order fulfillment system exposed via forged webhook events. Shipping addresses can be modified after payment confirmation, and order status can be set to "shipped" without warehouse verification. No secondary confirmation step between payment event and fulfillment trigger.',
     baseUrl: 'https://shop.target.com/internal/orders',
     type: 'api',
+    ring: 3,
+    ip: '203.0.113.10',
+    port: '443',
+    zone: 'DMZ Web',
     serviceInfo: [
       { label: 'Fulfillment Trigger', value: 'Automatic on payment.confirmed webhook', severity: 'high' },
       { label: 'Address Override', value: 'Shipping address editable post-payment', severity: 'medium' },
@@ -795,12 +867,16 @@ export const sampleNodes: PentestNode[] = [
     data: 'Internal employee-only endpoint exposed to authenticated users with user_type="employee". Provides access to inventory management, order processing, and internal tools. Includes an "Import from URL" feature that fetches supplier catalogs — the server makes outbound HTTP requests to any user-supplied URL.',
     baseUrl: 'https://shop.target.com/internal/employee',
     type: 'web_page',
+    ring: 2,
+    ip: '203.0.113.10',
+    port: '443',
+    zone: 'Internal App',
     serviceInfo: [
       { label: 'Framework', value: 'Express.js 4.18.2 (same as main app)' },
       { label: 'Auth', value: 'JWT user_type="employee" check' },
       { label: 'URL Fetch Feature', value: 'Server-side HTTP client with user-supplied URL', severity: 'high' },
       { label: 'SSRF Protection', value: 'No URL validation or allow-list on fetch endpoint', severity: 'critical' },
-      { label: 'Internal Access', value: 'Can reach 10.0.0.0/24 from server' },
+      { label: 'Internal Access', value: 'Can reach 10.0.1.0/24 from server' },
     ],
     possibleActions: [
       {
@@ -811,7 +887,7 @@ export const sampleNodes: PentestNode[] = [
         requiredAssets: ['credentials'],
         revealsNodes: ['admin_create_endpoint', 'internal_monitoring', 'internal_wiki', 'internal_jenkins'],
         revealsAssets: [
-          { type: 'api_key', name: 'Service Map', value: 'SSRF on /internal/employee/fetch — discovered internal endpoints including /internal/admin/create at 10.0.0.5:8080' },
+          { type: 'api_key', name: 'Service Map', value: 'SSRF on /internal/employee/fetch — discovered internal endpoints including /internal/admin/create at 10.0.1.1:8080' },
         ],
         category: 'exploit',
       },
@@ -842,6 +918,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Internal CRM tool for employee-level customer support. Provides bulk customer search by email, phone, or order ID with full PII display. Includes a "Export to CSV" feature with no row limit and no audit logging. Customer payment methods on file (last-4 + expiry) are visible in the detail view.',
     baseUrl: 'https://shop.target.com/internal/employee/customers',
     type: 'web_page',
+    ring: 2,
+    ip: '203.0.113.10',
+    port: '443',
+    zone: 'Internal App',
     serviceInfo: [
       { label: 'Records Accessible', value: '52,847 customer profiles', severity: 'critical' },
       { label: 'PII Displayed', value: 'Full name, email, phone, address, order history', severity: 'critical' },
@@ -889,6 +969,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Employee tool for managing product catalog — stock levels, supplier costs, and margin data. Inventory adjustments take effect immediately with no approval workflow. Supplier contracts and wholesale pricing are visible, representing sensitive competitive intelligence.',
     baseUrl: 'https://shop.target.com/internal/employee/inventory',
     type: 'web_page',
+    ring: 2,
+    ip: '203.0.113.10',
+    port: '443',
+    zone: 'Internal App',
     serviceInfo: [
       { label: 'Products', value: '3,200+ SKUs with real-time stock levels' },
       { label: 'Supplier Data', value: 'Wholesale costs, contract terms, volume discounts visible', severity: 'critical' },
@@ -930,6 +1014,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Full dump of the users table via SQL injection — 52,847 rows extracted. Contains email addresses, bcrypt password hashes, physical addresses, phone numbers, user_type flags, and account creation dates. Represents a reportable data breach under GDPR Article 33 and CCPA §1798.82.',
     baseUrl: 'postgresql://postgres.internal:5432/shopdb/users',
     type: 'database',
+    ring: 2,
+    ip: '10.0.3.6',
+    port: '5432',
+    zone: 'Database',
     serviceInfo: [
       { label: 'Records', value: '52,847 user accounts', severity: 'critical' },
       { label: 'PII Fields', value: 'email, full_name, address, phone, password_hash', severity: 'critical' },
@@ -978,13 +1066,17 @@ export const sampleNodes: PentestNode[] = [
     id: 'admin_create_endpoint',
     parentId: 'employee_portal',
     title: 'Admin Creation Endpoint',
-    data: 'Internal-only endpoint at 10.0.0.5:8080/internal/admin/create. Intended for provisioning admin accounts from the internal network. No authentication — relies on network-level access control only.',
-    baseUrl: 'http://10.0.0.5:8080/internal/admin/create',
+    data: 'Internal-only endpoint at 10.0.1.1:8080/internal/admin/create. Intended for provisioning admin accounts from the internal network. No authentication — relies on network-level access control only.',
+    baseUrl: 'http://10.0.1.1:8080/internal/admin/create',
     type: 'api',
+    ring: 1,
+    ip: '10.0.1.1',
+    port: '8080',
+    zone: 'Internal App',
     serviceInfo: [
       { label: 'Method', value: 'POST' },
       { label: 'Auth', value: 'None — trusts network-level isolation', severity: 'critical' },
-      { label: 'Network ACL', value: 'Accepts any source within 10.0.0.0/24' },
+      { label: 'Network ACL', value: 'Accepts any source within 10.0.1.0/24' },
       { label: 'Input', value: '{ email, password, role } — no validation on role field', severity: 'critical' },
       { label: 'Logging', value: 'No audit trail on account creation', severity: 'high' },
     ],
@@ -993,7 +1085,7 @@ export const sampleNodes: PentestNode[] = [
         id: 'ssrf_create_admin',
         name: 'SSRF — Create Admin User',
         hint: 'Can you provision access?',
-        description: 'Craft a POST request through the employee portal\'s URL fetch feature (the SSRF vector) targeting http://10.0.0.5:8080/internal/admin/create. The fetch feature proxies the request into the internal network, bypassing network-level ACLs. Since the admin endpoint has no authentication, the request succeeds and provisions a new admin account.',
+        description: 'Craft a POST request through the employee portal\'s URL fetch feature (the SSRF vector) targeting http://10.0.1.1:8080/internal/admin/create. The fetch feature proxies the request into the internal network, bypassing network-level ACLs. Since the admin endpoint has no authentication, the request succeeds and provisions a new admin account.',
         requiredAssets: ['api_key'],
         revealsNodes: ['ping_microservice', 'financial_reports', 'refund_console'],
         revealsAssets: [
@@ -1010,8 +1102,12 @@ export const sampleNodes: PentestNode[] = [
     parentId: 'admin_create_endpoint',
     title: 'Financial Dashboard',
     data: 'Internal business intelligence dashboard accessible to admin accounts. Displays real-time revenue, per-product margins, vendor payment schedules, and payroll summaries. Bank account details for ACH transfers are visible in the vendor payments section. No watermarking or DLP on exports.',
-    baseUrl: 'http://10.0.0.5:8080/internal/admin/finance',
+    baseUrl: 'http://10.0.1.1:8080/internal/admin/finance',
     type: 'web_page',
+    ring: 1,
+    ip: '10.0.1.1',
+    port: '8080',
+    zone: 'Internal App',
     serviceInfo: [
       { label: 'Revenue Data', value: 'Real-time daily/weekly/monthly revenue figures', severity: 'high' },
       { label: 'Vendor Payments', value: 'Bank routing + account numbers for ACH transfers', severity: 'critical' },
@@ -1047,8 +1143,12 @@ export const sampleNodes: PentestNode[] = [
     parentId: 'admin_create_endpoint',
     title: 'Bulk Refund Processing',
     data: 'Admin-only refund tool for processing returns and issuing store credits. Admin role bypasses the normal approval workflow — refunds execute immediately. Refund destination can be changed to any payment method. No per-transaction limit for admin accounts.',
-    baseUrl: 'http://10.0.0.5:8080/internal/admin/refunds',
+    baseUrl: 'http://10.0.1.1:8080/internal/admin/refunds',
     type: 'web_page',
+    ring: 1,
+    ip: '10.0.1.1',
+    port: '8080',
+    zone: 'Internal App',
     serviceInfo: [
       { label: 'Approval Workflow', value: 'Bypassed for admin role — immediate execution', severity: 'critical' },
       { label: 'Transaction Limit', value: 'No per-transaction cap for admin', severity: 'critical' },
@@ -1083,9 +1183,13 @@ export const sampleNodes: PentestNode[] = [
     id: 'ping_microservice',
     parentId: 'admin_create_endpoint',
     title: 'Ping Diagnostic Service',
-    data: 'Internal health-check microservice at 10.0.0.5:8080/ping. Accepts a hostname parameter and runs a system ping command to verify connectivity to other internal services. The hostname value is interpolated directly into the shell command with no sanitization.',
-    baseUrl: 'http://10.0.0.5:8080/ping',
+    data: 'Internal health-check microservice at 10.0.1.2:9000/ping. Accepts a hostname parameter and runs a system ping command to verify connectivity to other internal services. The hostname value is interpolated directly into the shell command with no sanitization.',
+    baseUrl: 'http://10.0.1.2:9000/ping',
     type: 'api',
+    ring: 0,
+    ip: '10.0.1.2',
+    port: '9000',
+    zone: 'Internal App',
     serviceInfo: [
       { label: 'Method', value: 'GET' },
       { label: 'Parameter', value: '?host=<hostname> — passed to system shell' },
@@ -1122,6 +1226,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Direct PostgreSQL access from the compromised server via local socket at postgres.internal:5432. The www-data user can read the pg_hba.conf trust entry for local connections. Full schema access including payments table with Stripe card tokens, orders with transaction history, and users with PII. A complete dump constitutes a PCI DSS violation and reportable data breach.',
     baseUrl: 'postgresql://postgres.internal:5432/shopdb',
     type: 'database',
+    ring: 0,
+    ip: '10.0.3.6',
+    port: '5432',
+    zone: 'Database',
     serviceInfo: [
       { label: 'Engine', value: 'PostgreSQL 15.3' },
       { label: 'Auth', value: 'Local socket — trust authentication (no password)', severity: 'critical' },
@@ -1151,6 +1259,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'The compromised server runs on AWS EC2. The instance metadata service (IMDS v1) is accessible at http://169.254.169.254/ with no token required. The attached IAM role has S3 read/write and EC2 describe permissions, enabling lateral movement across the cloud environment.',
     baseUrl: 'http://169.254.169.254/latest/meta-data/',
     type: 'network',
+    ring: 0,
+    ip: '169.254.169.254',
+    port: '80',
+    zone: 'Dev / Cloud',
     serviceInfo: [
       { label: 'IMDS Version', value: 'v1 (no token required)', severity: 'critical' },
       { label: 'IAM Role', value: 'shopapp-prod-role — S3, EC2, CloudWatch permissions', severity: 'critical' },
@@ -1181,9 +1293,13 @@ export const sampleNodes: PentestNode[] = [
     id: 'internal_monitoring',
     parentId: 'employee_portal',
     title: 'Grafana Dashboard',
-    data: 'Internal Grafana instance at 10.0.0.12:3000. Exposes infrastructure metrics, database query performance, and server health. Default credentials are commonly left unchanged on internal tools.',
-    baseUrl: 'http://10.0.0.12:3000',
+    data: 'Internal Grafana instance at 10.0.2.8:3000. Exposes infrastructure metrics, database query performance, and server health. Default credentials are commonly left unchanged on internal tools.',
+    baseUrl: 'http://10.0.2.8:3000',
     type: 'web_page',
+    ring: 2,
+    ip: '10.0.2.8',
+    port: '3000',
+    zone: 'Internal Tools',
     serviceInfo: [
       { label: 'Version', value: 'Grafana 10.2.3' },
       { label: 'CVE-2021-43798', value: 'Path traversal — patched in 8.3.1 (not applicable)', severity: 'info' },
@@ -1228,9 +1344,13 @@ export const sampleNodes: PentestNode[] = [
     id: 'internal_wiki',
     parentId: 'employee_portal',
     title: 'Confluence Wiki',
-    data: 'Internal Confluence instance at 10.0.0.20:8090. Corporate knowledge base likely containing architecture diagrams, credentials in runbooks, and deployment procedures.',
-    baseUrl: 'http://10.0.0.20:8090',
+    data: 'Internal Confluence instance at 10.0.2.6:8090. Corporate knowledge base likely containing architecture diagrams, credentials in runbooks, and deployment procedures.',
+    baseUrl: 'http://10.0.2.6:8090',
     type: 'web_page',
+    ring: 2,
+    ip: '10.0.2.6',
+    port: '8090',
+    zone: 'Internal Tools',
     serviceInfo: [
       { label: 'Version', value: 'Confluence 8.5.4 LTS' },
       { label: 'CVE-2023-22527', value: 'Template injection RCE — patched in 8.5.4', severity: 'info' },
@@ -1265,9 +1385,13 @@ export const sampleNodes: PentestNode[] = [
     id: 'internal_jenkins',
     parentId: 'employee_portal',
     title: 'Jenkins CI Server',
-    data: 'Jenkins automation server at 10.0.0.30:8080. CI/CD pipelines often contain deployment credentials, cloud keys, and have script consoles that allow direct code execution.',
-    baseUrl: 'http://10.0.0.30:8080',
+    data: 'Jenkins automation server at 10.0.2.5:8080. CI/CD pipelines often contain deployment credentials, cloud keys, and have script consoles that allow direct code execution.',
+    baseUrl: 'http://10.0.2.5:8080',
     type: 'internet_server',
+    ring: 2,
+    ip: '10.0.2.5',
+    port: '8080',
+    zone: 'Internal Tools',
     serviceInfo: [
       { label: 'Version', value: 'Jenkins 2.426.3 LTS' },
       { label: 'CVE-2024-23897', value: 'Arbitrary file read via CLI — patched in 2.426.3', severity: 'info' },
@@ -1319,6 +1443,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Internal Postfix relay at mail-relay.internal:2525. Forwards authenticated messages to internal @corp.target.com addresses. NTLM auth negotiation observed — potential credential relay target.',
     baseUrl: 'smtp://mail-relay.internal:2525',
     type: 'internet_server',
+    ring: 3,
+    ip: '10.0.1.5',
+    port: '2525',
+    zone: 'Internal App',
     serviceInfo: [
       { label: 'Software', value: 'Postfix 3.7.6 (internal relay)' },
       { label: 'NTLM Auth', value: 'NTLM negotiation supported — credential relay possible', severity: 'critical' },
@@ -1370,6 +1498,10 @@ export const sampleNodes: PentestNode[] = [
     data: 'Pre-AUTH INFO exposed the keyspace: sess:* keys hold JWT tokens for active user sessions, including sess:admin:* entries for admin sessions. Requirepass blocks GET/KEYS commands — the tokens are visible in metadata but values require authentication to read.',
     baseUrl: 'redis://shop.target.com:6379/1',
     type: 'database',
+    ring: 3,
+    ip: '10.0.1.10',
+    port: '6380',
+    zone: 'Internal App',
     serviceInfo: [
       { label: 'Admin Tokens', value: 'sess:admin:* keys contain valid admin JWT tokens', severity: 'critical' },
       { label: 'No Expiry', value: 'Session keys have no TTL — tokens valid indefinitely', severity: 'high' },
@@ -1413,4 +1545,68 @@ export const sampleNodes: PentestNode[] = [
     discovered: false,
     status: 'locked',
   },
+];
+
+// =========================================================================
+// NETWORK DEVICES — infrastructure-only context (not attack targets)
+// =========================================================================
+export const networkDevices: NetworkDevice[] = [
+  // Outermost — CDN / WAF
+  { id: 'cloudflare', label: 'Cloudflare WAF', ip: '1.1.1.1 / CDN', ring: 6, zone: 'Internet', color: '#f97316', iconType: 'waf', kind: 'device' },
+
+  // Firewalls
+  { id: 'fw-01', label: 'FW-01', ip: '', ring: 5, zone: 'Perimeter', color: '#ff3366', iconType: 'waf', kind: 'firewall', rules: [':80/:443 → nginx', ':21 → FTP', ':25 → SMTP', '⚠ :6379 exposed'] },
+  { id: 'fw-02', label: 'FW-02', ip: '', ring: 3, zone: 'Internal', color: '#ff3366', iconType: 'waf', kind: 'firewall', rules: ['BLOCK default', 'SSRF → Admin :8080', 'nginx → DB :1433'] },
+  { id: 'fw-vpn', label: 'FW-VPN', ip: '', ring: 3, zone: 'VPN', color: '#ff3366', iconType: 'waf', kind: 'firewall', rules: ['VPN :443', 'Corp → Internal', 'Dev → Jenkins/Docker'] },
+  { id: 'fw-03', label: 'FW-03 DB', ip: '', ring: 1, zone: 'Database', color: '#ff3366', iconType: 'waf', kind: 'firewall', rules: ['MSSQL :1433', 'PostgreSQL :5432', 'Redis :6380'] },
+  { id: 'fw-04', label: 'FW-04 Dev', ip: '', ring: 1, zone: 'Dev / Cloud', color: '#ff3366', iconType: 'waf', kind: 'firewall', rules: ['Docker :2376', 'K8s :6443', 'AWS :443'] },
+
+  // Corporate endpoints
+  { id: 'ep-admin', label: 'Admin', ip: '192.168.1.10', port: 'VPN', ring: 4, zone: 'Endpoints', color: '#ef4444', iconType: 'ep-admin', kind: 'device', services: 'Admin workstation' },
+  { id: 'ep-it', label: 'IT', ip: '192.168.1.11', port: 'VPN', ring: 4, zone: 'Endpoints', color: '#3b82f6', iconType: 'ep-it', kind: 'device', services: 'IT workstation' },
+  { id: 'ep-manager', label: 'Manager', ip: '192.168.1.12', port: 'VPN', ring: 4, zone: 'Endpoints', color: '#3b82f6', iconType: 'ep-manager', kind: 'device', services: 'Manager workstation' },
+  { id: 'ep-finance', label: 'Finance', ip: '192.168.1.13', port: 'VPN', ring: 4, zone: 'Endpoints', color: '#3b82f6', iconType: 'ep-finance', kind: 'device', services: 'Finance workstation' },
+  { id: 'ep-dev', label: 'Developer', ip: '192.168.1.14', port: 'VPN', ring: 4, zone: 'Endpoints', color: '#00ff88', iconType: 'ep-dev', kind: 'device', services: 'Dev workstation' },
+
+  // Background databases (no game node)
+  { id: 'mssql', label: 'MSSQL', ip: '10.0.3.5', port: '1433', ring: 0, zone: 'Database', color: '#a855f7', iconType: 'mssql', kind: 'device', services: 'SQL Server 2019' },
+  { id: 'redis-db', label: 'Redis DB', ip: '10.0.3.7', port: '6379', ring: 0, zone: 'Database', color: '#a855f7', iconType: 'redis', kind: 'device', services: 'Persistent store' },
+
+  // Dev / Cloud infra (no game node)
+  { id: 'docker', label: 'Docker Host', ip: '10.0.4.5', port: '2376', ring: 0, zone: 'Dev / Cloud', color: '#00ff88', iconType: 'docker', kind: 'device', services: 'Container runtime' },
+  { id: 'kubernetes', label: 'Kubernetes', ip: '10.0.4.6', port: '6443', ring: 0, zone: 'Dev / Cloud', color: '#00ff88', iconType: 'kubernetes', kind: 'device', services: 'k8s control' },
+  { id: 'jira', label: 'Jira', ip: '10.0.2.7', port: '8080', ring: 2, zone: 'Internal Tools', color: '#3b82f6', iconType: 'jira', kind: 'device', services: 'Issue tracker' },
+];
+
+// =========================================================================
+// NETWORK EDGES — connectivity between nodes/devices
+// =========================================================================
+export const networkEdges: NetworkEdge[] = [
+  // Internet → Perimeter
+  { id: 'e-cf-fw01', source: 'cloudflare', target: 'fw-01' },
+
+  // Perimeter → DMZ zones (game nodes)
+  { id: 'e-fw01-root', source: 'fw-01', target: 'root' },
+  { id: 'e-fw01-ftp', source: 'fw-01', target: 'ftp_server' },
+  { id: 'e-fw01-smtp', source: 'fw-01', target: 'mail_server' },
+  { id: 'e-fw01-redis', source: 'fw-01', target: 'redis_cache' },
+
+  // DMZ → Internal firewalls
+  { id: 'e-root-fw02', source: 'root', target: 'fw-02' },
+  { id: 'e-fw02-employee', source: 'fw-02', target: 'employee_portal' },
+
+  // Endpoints → VPN → Internal
+  { id: 'e-endpoints-vpn', source: 'ep-admin', target: 'fw-vpn' },
+  { id: 'e-vpn-tools', source: 'fw-vpn', target: 'internal_jenkins' },
+  { id: 'e-vpn-app', source: 'fw-vpn', target: 'employee_portal' },
+
+  // Internal → DB firewalls
+  { id: 'e-app-fw03', source: 'admin_create_endpoint', target: 'fw-03' },
+  { id: 'e-fw03-mssql', source: 'fw-03', target: 'mssql' },
+  { id: 'e-fw03-proddb', source: 'fw-03', target: 'production_db_server' },
+
+  // Internal → Dev firewalls
+  { id: 'e-tools-fw04', source: 'internal_jenkins', target: 'fw-04' },
+  { id: 'e-fw04-docker', source: 'fw-04', target: 'docker' },
+  { id: 'e-fw04-k8s', source: 'fw-04', target: 'kubernetes' },
 ];

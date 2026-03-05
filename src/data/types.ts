@@ -35,6 +35,30 @@ export interface PentestNode {
   discovered: boolean;
   status: NodeStatus;
   serviceInfo?: ServiceDetail[];
+  ring?: number;
+  ip?: string;
+  port?: string;
+  zone?: string;
+}
+
+export interface NetworkDevice {
+  id: string;
+  label: string;
+  ip: string;
+  port?: string;
+  ring: number;
+  zone: string;
+  color: string;
+  iconType: string;
+  services?: string;
+  kind: 'device' | 'firewall';
+  rules?: string[];
+}
+
+export interface NetworkEdge {
+  id: string;
+  source: string;
+  target: string;
 }
 
 export interface Asset {
