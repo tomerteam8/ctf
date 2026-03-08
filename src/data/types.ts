@@ -26,7 +26,7 @@ export interface ServiceDetail {
 
 export interface PentestNode {
   id: string;
-  parentId: string | null;
+  parentId: string | string[] | null;
   title: string;
   data: string;
   baseUrl: string;

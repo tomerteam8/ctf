@@ -9,6 +9,14 @@ const typeIcons: Record<string, string> = {
 const dotColor = (status: string) =>
   status === 'compromised' ? '#ff3366' : status === 'locked' ? '#ff3366' : status === 'available' ? '#00f0ff' : '#00ff88';
 
+const zoneColor: Record<string, string> = {
+  Perimeter: '#f59e0b',
+  Corporate: '#3b82f6',
+  'Dev/CI': '#fbbf24',
+  Development: '#fbbf24',
+  Management: '#a855f7',
+};
+
 function borderAndBg(status: string) {
   if (status === 'locked') return { borderColor: 'rgba(255,51,102,0.5)', background: 'rgba(255,51,102,0.05)', animation: 'pulse-red 3s ease-in-out infinite' };
   if (status === 'available') return { borderColor: 'rgba(0,240,255,0.5)', background: 'rgba(0,240,255,0.05)', animation: 'pulse-cyan 2s ease-in-out infinite' };
@@ -23,6 +31,7 @@ export default function TreeNodeCard({ nodeDatum, toggleNode }: CustomNodeElemen
   const type = attrs?.type ?? '';
   const title = nodeDatum.name;
   const baseUrl = attrs?.baseUrl ?? '';
+  const zone = attrs?.zone ?? '';
   const actionCount = Number(attrs?.actionCount ?? 0);
   const difficulty = attrs?.difficulty ?? 'normal';
   const completed = status === 'completed' || status === 'compromised';
@@ -69,7 +78,7 @@ export default function TreeNodeCard({ nodeDatum, toggleNode }: CustomNodeElemen
   const foH = cardH + 50;
 
   return (
-    <g>
+    <g data-node-id={nodeId}>
       <foreignObject
         x={-foW / 2}
         y={-foH / 2}
@@ -92,7 +101,7 @@ export default function TreeNodeCard({ nodeDatum, toggleNode }: CustomNodeElemen
               {title}
             </div>
             {!completed && (
-              <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 3, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 9, color: zoneColor[zone] || '#94a3b8', marginTop: 3, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {baseUrl}
               </div>
             )}

@@ -125,7 +125,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   executePrompt: async (nodeId, prompt) => {
-    if (prompt.trim() === 'REVEAL_ALL_NODES') {
+    if (prompt.trim() === 'R') {
       get().revealAllNodes();
       return;
     }
@@ -282,6 +282,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         // Check for flag triggers
         const flagMap: Record<string, { id: string; value: string }> = {
           sqli_user_type: { id: 'sqli_user_type', value: 'FLAG{employee_discount_privilege_escalation}' },
+          chat_social_engineer: { id: 'chat_social_engineer', value: 'FLAG{social_engineering_privilege_escalation}' },
           ping_command_injection: { id: 'ping_command_injection', value: 'FLAG{complete_takeover_reverse_shell}' },
         };
         const flag = llmResponse.success && matchedAction?.id && flagMap[matchedAction.id]

@@ -7,18 +7,34 @@ const flagContent: Record<string, { emoji: string; title: string; description: s
     title: 'Flag Captured',
     description: 'You exploited a SQL injection in the password change endpoint to escalate your account to employee status, unlocking staff discounts and enabling near-free purchases on the platform.',
   },
-  ping_command_injection: {
-    emoji: '💀',
-    title: 'Complete Takeover',
-    description: 'You chained account registration, SQL injection privilege escalation, SSRF into the internal network, and command injection on the ping diagnostic service to spawn a reverse shell. You now have full remote code execution on the internal server — complete takeover achieved. Congratulations!',
+  chat_social_engineer: {
+    emoji: '🚩',
+    title: 'Flag Captured',
+    description: 'You social-engineered a support agent into manually upgrading your account to employee status, unlocking staff discounts and enabling near-free purchases on the platform.',
   },
 };
 
+function getTakeoverDescription(capturedFlags: string[]): string {
+  const usedSqli = capturedFlags.includes('sqli_user_type');
+  const usedSE = capturedFlags.includes('chat_social_engineer');
+  const escalationMethod = usedSqli && usedSE
+    ? 'SQL injection and social engineering to escalate privileges'
+    : usedSE
+      ? 'social engineering a support agent to escalate privileges'
+      : 'SQL injection privilege escalation';
+  return `You chained account registration, ${escalationMethod}, SSRF via the supplier catalog import tool to create a rogue admin account, and command injection on the ping diagnostic service to spawn a reverse shell. You now have full remote code execution on the management server — complete takeover achieved. Congratulations!`;
+}
+
 export default function FlagModal() {
   const capturedFlag = useGameStore((s) => s.capturedFlag);
+  const capturedFlags = useGameStore((s) => s.capturedFlags);
   const clearFlag = useGameStore((s) => s.clearFlag);
 
-  const content = capturedFlag ? flagContent[capturedFlag.id] : null;
+  const content = capturedFlag
+    ? capturedFlag.id === 'ping_command_injection'
+      ? { emoji: '💀', title: 'Complete Takeover', description: getTakeoverDescription(capturedFlags) }
+      : flagContent[capturedFlag.id]
+    : null;
 
   return (
     <AnimatePresence>

@@ -16,6 +16,14 @@ const severityColor: Record<InfoSeverity, string> = {
   info: '#94a3b8',
 };
 
+const zoneColor: Record<string, string> = {
+  Perimeter: '#f59e0b',
+  Corporate: '#3b82f6',
+  'Dev/CI': '#fbbf24',
+  Development: '#fbbf24',
+  Management: '#a855f7',
+};
+
 const statusBadge = (status: string): React.CSSProperties => ({
   display: 'inline-block', padding: '4px 10px', borderRadius: 6,
   fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em',
@@ -140,11 +148,22 @@ export default function NodePanel() {
               background: 'rgba(10,14,23,0.5)', border: '1px solid #2a3a5c',
             }}>
               <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.5 }}>{node.data}</p>
-              <div style={{ marginTop: 8, fontFamily: 'monospace', fontSize: 12, color: '#00f0ff' }}>{node.baseUrl}</div>
+              <div style={{ marginTop: 8, fontFamily: 'monospace', fontSize: 12, color: zoneColor[node.zone ?? ''] || '#00f0ff' }}>{node.baseUrl}</div>
             </div>
 
-            {/* Service Details (expandable) */}
-            {node.serviceInfo && node.serviceInfo.length > 0 && (
+            {/* Service Details (expandable) — filter by difficulty for nodes with children */}
+            {node.serviceInfo && node.serviceInfo.length > 0 && (() => {
+              const hasChildren = node.possibleActions.some((a) => a.revealsNodes.length > 0);
+              const filteredInfo = hasChildren
+                ? node.serviceInfo.filter((d) => {
+                    if (difficulty === 'easy') return true;
+                    if (difficulty === 'normal') return d.severity !== 'critical';
+                    // hard: only show non-severity (neutral) details
+                    return !d.severity;
+                  })
+                : node.serviceInfo;
+              return filteredInfo.length > 0;
+            })() && (
               <div style={{ marginBottom: 16 }}>
                 <button
                   onClick={() => setShowServiceInfo(!showServiceInfo)}
@@ -179,7 +198,17 @@ export default function NodePanel() {
                     border: '1px solid #2a3a5c',
                     borderTop: 'none',
                   }}>
-                    {node.serviceInfo.map((detail, i) => (
+                    {(() => {
+                      const hasChildren = node.possibleActions.some((a) => a.revealsNodes.length > 0);
+                      return (hasChildren
+                        ? node.serviceInfo!.filter((d) => {
+                            if (difficulty === 'easy') return true;
+                            if (difficulty === 'normal') return d.severity !== 'critical';
+                            return !d.severity;
+                          })
+                        : node.serviceInfo!
+                      );
+                    })().map((detail, i, arr) => (
                       <div
                         key={i}
                         style={{
@@ -187,7 +216,7 @@ export default function NodePanel() {
                           justifyContent: 'space-between',
                           alignItems: 'flex-start',
                           padding: '5px 0',
-                          borderBottom: i < node.serviceInfo!.length - 1 ? '1px solid rgba(42,58,92,0.5)' : 'none',
+                          borderBottom: i < arr.length - 1 ? '1px solid rgba(42,58,92,0.5)' : 'none',
                         }}
                       >
                         <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0, marginRight: 12 }}>
