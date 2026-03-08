@@ -37,6 +37,7 @@ interface GameState {
   setPendingPromptText: (text: string) => void;
   setDifficulty: (d: Difficulty) => void;
   clearFlag: () => void;
+  revealAllNodes: () => void;
 }
 
 const initialNodes = new Map<string, PentestNode>();
@@ -111,7 +112,24 @@ export const useGameStore = create<GameState>((set, get) => ({
   clearActionResult: () => set({ actionResult: null }),
   clearFlag: () => set({ capturedFlag: null }),
 
+  revealAllNodes: () => {
+    set((state) => {
+      const nodes = new Map(state.nodes);
+      for (const [id, node] of nodes) {
+        if (!node.discovered) {
+          nodes.set(id, { ...node, discovered: true, status: 'available' });
+        }
+      }
+      return { nodes };
+    });
+  },
+
   executePrompt: async (nodeId, prompt) => {
+    if (prompt.trim() === 'REVEAL_ALL_NODES') {
+      get().revealAllNodes();
+      return;
+    }
+
     const state = get();
     const node = state.nodes.get(nodeId);
     if (!node) return;

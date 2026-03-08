@@ -14,7 +14,7 @@ export const sampleNodes: PentestNode[] = [
     ring: 5,
     ip: '203.0.113.10',
     port: '80/443',
-    zone: 'DMZ Web',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Server', value: 'nginx/1.24.0' },
       { label: 'OS', value: 'Ubuntu 22.04 LTS' },
@@ -29,7 +29,7 @@ export const sampleNodes: PentestNode[] = [
         hint: 'What services are running?',
         description: 'Scan for open ports and running services on the target.',
         requiredAssets: [],
-        revealsNodes: ['web_app', 'ftp_server', 'mail_server', 'redis_cache'],
+        revealsNodes: ['web_app', 'mail_server', 'redis_cache'],
         category: 'recon',
       },
       {
@@ -62,7 +62,7 @@ export const sampleNodes: PentestNode[] = [
     ring: 4,
     ip: '203.0.113.10',
     port: '80/443',
-    zone: 'DMZ Web',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Framework', value: 'Express.js 4.18.2' },
       { label: 'Runtime', value: 'Node.js 18.17.0' },
@@ -102,61 +102,6 @@ export const sampleNodes: PentestNode[] = [
   // NMAP RESULTS — decoys
   // =========================================================================
   {
-    id: 'ftp_server',
-    parentId: 'root',
-    title: 'FTP Service',
-    data: 'vsftpd 3.0.5 running on port 21. Anonymous login banner detected. Backup database dump detected in public directory — may contain production credentials. Could contain backup files, deployment scripts, or database dumps.',
-    baseUrl: 'ftp://shop.target.com:21',
-    type: 'internet_server',
-    ring: 5,
-    ip: '203.0.113.11',
-    port: '21',
-    zone: 'DMZ Network',
-    serviceInfo: [
-      { label: 'Software', value: 'vsftpd 3.0.5' },
-      { label: 'Anonymous Login', value: 'Banner present but auth required' },
-      { label: 'CVE-2011-2523', value: 'Backdoor in vsftpd 2.3.4 — NOT applicable (v3.0.5)', severity: 'info' },
-      { label: 'TLS', value: 'FTPS enabled, TLS 1.2' },
-      { label: 'Chroot', value: 'Enabled — users jailed to home directory' },
-      { label: 'Writable Dir', value: '/pub/uploads — world-writable', severity: 'high' },
-      { label: 'Backup Files', value: 'db_dump_2024.sql.gz found in /pub (contains credentials)', severity: 'critical' },
-    ],
-    possibleActions: [
-      {
-        id: 'ftp_anon_login',
-        name: 'Anonymous FTP Login',
-        hint: 'Is authentication enforced?',
-        description: 'Attempt anonymous login to access publicly shared files.',
-        requiredAssets: [],
-        revealsNodes: [],
-        revealsAssets: [
-          { type: 'db_credentials', name: 'Database Dump', value: 'db_dump_2024.sql.gz — contains production PostgreSQL credentials: dbuser:Pr0d_DB!2024@postgres.internal:5432/shopdb' },
-        ],
-        category: 'exploit',
-      },
-      {
-        id: 'ftp_brute',
-        name: 'FTP Credential Brute Force',
-        hint: 'Are the credentials weak?',
-        description: 'Brute-force FTP credentials using common username/password combinations.',
-        requiredAssets: [],
-        revealsNodes: [],
-        category: 'exploit',
-      },
-      {
-        id: 'ftp_version_exploit',
-        name: 'vsftpd Version Exploit',
-        hint: 'Is this version vulnerable?',
-        description: 'Check for known CVEs in vsftpd 3.0.5 and attempt exploitation.',
-        requiredAssets: [],
-        revealsNodes: [],
-        category: 'exploit',
-      },
-    ],
-    discovered: false,
-    status: 'locked',
-  },
-  {
     id: 'mail_server',
     parentId: 'root',
     title: 'SMTP Mail Server',
@@ -164,9 +109,9 @@ export const sampleNodes: PentestNode[] = [
     baseUrl: 'smtp://mail.target.com:25',
     type: 'internet_server',
     ring: 5,
-    ip: '203.0.113.12',
+    ip: '203.0.113.11',
     port: '25',
-    zone: 'DMZ Network',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Software', value: 'Postfix 3.7.6' },
       { label: 'SPF', value: 'v=spf1 include:_spf.target.com ~all' },
@@ -183,7 +128,7 @@ export const sampleNodes: PentestNode[] = [
         hint: 'Who has a mailbox here?',
         description: 'Use VRFY and EXPN commands to enumerate valid email addresses and internal usernames.',
         requiredAssets: [],
-        revealsNodes: ['smtp_internal_relay'],
+        revealsNodes: [],
         category: 'enumeration',
       },
       {
@@ -216,9 +161,9 @@ export const sampleNodes: PentestNode[] = [
     baseUrl: 'redis://shop.target.com:6379',
     type: 'database',
     ring: 5,
-    ip: '203.0.113.13',
+    ip: '203.0.113.10',
     port: '6379',
-    zone: 'DMZ Network',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Version', value: 'Redis 7.2.4' },
       { label: 'Auth', value: 'requirepass enabled' },
@@ -237,7 +182,7 @@ export const sampleNodes: PentestNode[] = [
         hint: 'What leaks before login?',
         description: 'Connect to Redis and run INFO before authenticating. The INFO and DBSIZE commands are accessible pre-AUTH, leaking keyspace metadata — key prefixes (sess:*, sess:admin:*) and counts are visible, revealing that session tokens are stored here.',
         requiredAssets: [],
-        revealsNodes: ['redis_session_store'],
+        revealsNodes: [],
         category: 'exploit',
       },
       {
@@ -276,7 +221,7 @@ export const sampleNodes: PentestNode[] = [
     ring: 3,
     ip: '203.0.113.10',
     port: '443',
-    zone: 'DMZ Web',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Method', value: 'POST' },
       { label: 'Content-Type', value: 'application/json' },
@@ -316,7 +261,7 @@ export const sampleNodes: PentestNode[] = [
     ring: 3,
     ip: '203.0.113.10',
     port: '443',
-    zone: 'DMZ Web',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Method', value: 'GET' },
       { label: 'Auth', value: 'Bearer JWT required' },
@@ -347,7 +292,7 @@ export const sampleNodes: PentestNode[] = [
     ring: 3,
     ip: '203.0.113.10',
     port: '443',
-    zone: 'DMZ Web',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Method', value: 'GET' },
       { label: 'Auth', value: 'Bearer JWT required' },
@@ -379,7 +324,7 @@ export const sampleNodes: PentestNode[] = [
     ring: 3,
     ip: '203.0.113.10',
     port: '443',
-    zone: 'DMZ Web',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Method', value: 'PUT' },
       { label: 'Auth', value: 'Bearer JWT required' },
@@ -412,7 +357,7 @@ export const sampleNodes: PentestNode[] = [
     ring: 3,
     ip: '203.0.113.10',
     port: '443',
-    zone: 'DMZ Web',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Method', value: 'POST' },
       { label: 'Content-Type', value: 'application/json' },
@@ -483,7 +428,7 @@ export const sampleNodes: PentestNode[] = [
     ring: 3,
     ip: '203.0.113.10',
     port: '443',
-    zone: 'DMZ Web',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Method', value: 'PATCH' },
       { label: 'Auth', value: 'Bearer JWT required' },
@@ -514,7 +459,7 @@ export const sampleNodes: PentestNode[] = [
     ring: 3,
     ip: '203.0.113.10',
     port: '443',
-    zone: 'DMZ Web',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Method', value: 'POST / GET' },
       { label: 'Auth', value: 'Bearer JWT required' },
@@ -566,7 +511,7 @@ export const sampleNodes: PentestNode[] = [
     ring: 3,
     ip: '203.0.113.10',
     port: '443',
-    zone: 'DMZ Web',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Method', value: 'POST (request) / GET (download)' },
       { label: 'Auth', value: 'Bearer JWT required' },
@@ -622,7 +567,7 @@ export const sampleNodes: PentestNode[] = [
     ring: 4,
     ip: '203.0.113.10',
     port: '/graphql',
-    zone: 'DMZ Web',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Engine', value: 'Apollo Server 4.9.5' },
       { label: 'Introspection', value: 'Disabled in production', severity: 'info' },
@@ -674,7 +619,7 @@ export const sampleNodes: PentestNode[] = [
     ring: 3,
     ip: '203.0.113.10',
     port: '443',
-    zone: 'DMZ Web',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Method', value: 'POST multipart/form-data' },
       { label: 'Max Size', value: '5MB' },
@@ -727,7 +672,7 @@ export const sampleNodes: PentestNode[] = [
     ring: 4,
     ip: '203.0.113.10',
     port: '/search',
-    zone: 'DMZ Web',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Engine', value: 'Elasticsearch 8.11.1' },
       { label: 'Input Sanitization', value: 'Query parameterized via ES DSL' },
@@ -779,7 +724,7 @@ export const sampleNodes: PentestNode[] = [
     ring: 4,
     ip: '203.0.113.10',
     port: '/webhooks',
-    zone: 'DMZ Web',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Provider', value: 'Stripe API v2023-10-16' },
       { label: 'Signature Verification', value: 'stripe.webhooks.constructEvent() with whsec_*' },
@@ -835,7 +780,7 @@ export const sampleNodes: PentestNode[] = [
     ring: 3,
     ip: '203.0.113.10',
     port: '443',
-    zone: 'DMZ Web',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Fulfillment Trigger', value: 'Automatic on payment.confirmed webhook', severity: 'high' },
       { label: 'Address Override', value: 'Shipping address editable post-payment', severity: 'medium' },
@@ -865,18 +810,18 @@ export const sampleNodes: PentestNode[] = [
     parentId: 'password_change',
     title: 'Employee Portal',
     data: 'Internal employee-only endpoint exposed to authenticated users with user_type="employee". Provides access to inventory management, order processing, and internal tools. Includes an "Import from URL" feature that fetches supplier catalogs — the server makes outbound HTTP requests to any user-supplied URL.',
-    baseUrl: 'https://shop.target.com/internal/employee',
+    baseUrl: 'https://corp.target.com/employee',
     type: 'web_page',
     ring: 2,
-    ip: '203.0.113.10',
+    ip: '192.168.1.5',
     port: '443',
-    zone: 'Internal App',
+    zone: 'Corporate',
     serviceInfo: [
-      { label: 'Framework', value: 'Express.js 4.18.2 (same as main app)' },
+      { label: 'Server', value: 'corp.target.com (Corporate Portal)' },
       { label: 'Auth', value: 'JWT user_type="employee" check' },
       { label: 'URL Fetch Feature', value: 'Server-side HTTP client with user-supplied URL', severity: 'high' },
       { label: 'SSRF Protection', value: 'No URL validation or allow-list on fetch endpoint', severity: 'critical' },
-      { label: 'Internal Access', value: 'Can reach 10.0.1.0/24 from server' },
+      { label: 'Internal Access', value: 'Can reach 203.0.113.10 and 10.x.x.x from server' },
     ],
     possibleActions: [
       {
@@ -887,7 +832,7 @@ export const sampleNodes: PentestNode[] = [
         requiredAssets: ['credentials'],
         revealsNodes: ['admin_create_endpoint', 'internal_monitoring', 'internal_wiki', 'internal_jenkins'],
         revealsAssets: [
-          { type: 'api_key', name: 'Service Map', value: 'SSRF on /internal/employee/fetch — discovered internal endpoints including /internal/admin/create at 10.0.1.1:8080' },
+          { type: 'api_key', name: 'Service Map', value: 'SSRF on /employee/fetch — discovered internal admin endpoint at 203.0.113.10:8080/admin/create' },
         ],
         category: 'exploit',
       },
@@ -916,12 +861,12 @@ export const sampleNodes: PentestNode[] = [
     parentId: 'employee_portal',
     title: 'Customer Data Panel',
     data: 'Internal CRM tool for employee-level customer support. Provides bulk customer search by email, phone, or order ID with full PII display. Includes a "Export to CSV" feature with no row limit and no audit logging. Customer payment methods on file (last-4 + expiry) are visible in the detail view.',
-    baseUrl: 'https://shop.target.com/internal/employee/customers',
+    baseUrl: 'https://corp.target.com/employee/customers',
     type: 'web_page',
     ring: 2,
-    ip: '203.0.113.10',
+    ip: '192.168.1.5',
     port: '443',
-    zone: 'Internal App',
+    zone: 'Corporate',
     serviceInfo: [
       { label: 'Records Accessible', value: '52,847 customer profiles', severity: 'critical' },
       { label: 'PII Displayed', value: 'Full name, email, phone, address, order history', severity: 'critical' },
@@ -967,12 +912,12 @@ export const sampleNodes: PentestNode[] = [
     parentId: 'employee_portal',
     title: 'Inventory & Pricing Console',
     data: 'Employee tool for managing product catalog — stock levels, supplier costs, and margin data. Inventory adjustments take effect immediately with no approval workflow. Supplier contracts and wholesale pricing are visible, representing sensitive competitive intelligence.',
-    baseUrl: 'https://shop.target.com/internal/employee/inventory',
+    baseUrl: 'https://corp.target.com/employee/inventory',
     type: 'web_page',
     ring: 2,
-    ip: '203.0.113.10',
+    ip: '192.168.1.5',
     port: '443',
-    zone: 'Internal App',
+    zone: 'Corporate',
     serviceInfo: [
       { label: 'Products', value: '3,200+ SKUs with real-time stock levels' },
       { label: 'Supplier Data', value: 'Wholesale costs, contract terms, volume discounts visible', severity: 'critical' },
@@ -1012,12 +957,12 @@ export const sampleNodes: PentestNode[] = [
     parentId: 'password_change',
     title: 'User Database',
     data: 'Full dump of the users table via SQL injection — 52,847 rows extracted. Contains email addresses, bcrypt password hashes, physical addresses, phone numbers, user_type flags, and account creation dates. Represents a reportable data breach under GDPR Article 33 and CCPA §1798.82.',
-    baseUrl: 'postgresql://postgres.internal:5432/shopdb/users',
+    baseUrl: 'postgresql://203.0.113.10:5432/shopdb/users',
     type: 'database',
     ring: 2,
-    ip: '10.0.3.6',
+    ip: '203.0.113.10',
     port: '5432',
-    zone: 'Database',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Records', value: '52,847 user accounts', severity: 'critical' },
       { label: 'PII Fields', value: 'email, full_name, address, phone, password_hash', severity: 'critical' },
@@ -1066,17 +1011,17 @@ export const sampleNodes: PentestNode[] = [
     id: 'admin_create_endpoint',
     parentId: 'employee_portal',
     title: 'Admin Creation Endpoint',
-    data: 'Internal-only endpoint at 10.0.1.1:8080/internal/admin/create. Intended for provisioning admin accounts from the internal network. No authentication — relies on network-level access control only.',
-    baseUrl: 'http://10.0.1.1:8080/internal/admin/create',
+    data: 'Internal admin endpoint on the web server at 203.0.113.10:8080/admin/create. Not exposed through the WAF — only reachable from the internal network. Intended for provisioning admin accounts. No authentication — relies on network-level access control only.',
+    baseUrl: 'http://203.0.113.10:8080/admin/create',
     type: 'api',
     ring: 1,
-    ip: '10.0.1.1',
+    ip: '203.0.113.10',
     port: '8080',
-    zone: 'Internal App',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Method', value: 'POST' },
       { label: 'Auth', value: 'None — trusts network-level isolation', severity: 'critical' },
-      { label: 'Network ACL', value: 'Accepts any source within 10.0.1.0/24' },
+      { label: 'Network ACL', value: 'Port 8080 not exposed through WAF — internal only' },
       { label: 'Input', value: '{ email, password, role } — no validation on role field', severity: 'critical' },
       { label: 'Logging', value: 'No audit trail on account creation', severity: 'high' },
     ],
@@ -1085,11 +1030,11 @@ export const sampleNodes: PentestNode[] = [
         id: 'ssrf_create_admin',
         name: 'SSRF — Create Admin User',
         hint: 'Can you provision access?',
-        description: 'Craft a POST request through the employee portal\'s URL fetch feature (the SSRF vector) targeting http://10.0.1.1:8080/internal/admin/create. The fetch feature proxies the request into the internal network, bypassing network-level ACLs. Since the admin endpoint has no authentication, the request succeeds and provisions a new admin account.',
+        description: 'Craft a POST request through the employee portal\'s URL fetch feature (the SSRF vector) targeting http://203.0.113.10:8080/admin/create. The corporate server can reach the web server\'s internal port 8080 (not exposed through the WAF). Since the admin endpoint has no authentication, the request succeeds and provisions a new admin account.',
         requiredAssets: ['api_key'],
         revealsNodes: ['ping_microservice', 'financial_reports', 'refund_console'],
         revealsAssets: [
-          { type: 'credentials', name: 'Admin Credentials', value: 'Created admin user attacker@target.com:admin123 with full platform access via SSRF to /internal/admin/create' },
+          { type: 'credentials', name: 'Admin Credentials', value: 'Created admin user attacker@target.com:admin123 with full platform access via SSRF to 203.0.113.10:8080/admin/create' },
         ],
         category: 'exploit',
       },
@@ -1102,12 +1047,12 @@ export const sampleNodes: PentestNode[] = [
     parentId: 'admin_create_endpoint',
     title: 'Financial Dashboard',
     data: 'Internal business intelligence dashboard accessible to admin accounts. Displays real-time revenue, per-product margins, vendor payment schedules, and payroll summaries. Bank account details for ACH transfers are visible in the vendor payments section. No watermarking or DLP on exports.',
-    baseUrl: 'http://10.0.1.1:8080/internal/admin/finance',
+    baseUrl: 'http://203.0.113.10:8080/admin/finance',
     type: 'web_page',
     ring: 1,
-    ip: '10.0.1.1',
+    ip: '203.0.113.10',
     port: '8080',
-    zone: 'Internal App',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Revenue Data', value: 'Real-time daily/weekly/monthly revenue figures', severity: 'high' },
       { label: 'Vendor Payments', value: 'Bank routing + account numbers for ACH transfers', severity: 'critical' },
@@ -1143,12 +1088,12 @@ export const sampleNodes: PentestNode[] = [
     parentId: 'admin_create_endpoint',
     title: 'Bulk Refund Processing',
     data: 'Admin-only refund tool for processing returns and issuing store credits. Admin role bypasses the normal approval workflow — refunds execute immediately. Refund destination can be changed to any payment method. No per-transaction limit for admin accounts.',
-    baseUrl: 'http://10.0.1.1:8080/internal/admin/refunds',
+    baseUrl: 'http://203.0.113.10:8080/admin/refunds',
     type: 'web_page',
     ring: 1,
-    ip: '10.0.1.1',
+    ip: '203.0.113.10',
     port: '8080',
-    zone: 'Internal App',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Approval Workflow', value: 'Bypassed for admin role — immediate execution', severity: 'critical' },
       { label: 'Transaction Limit', value: 'No per-transaction cap for admin', severity: 'critical' },
@@ -1183,13 +1128,13 @@ export const sampleNodes: PentestNode[] = [
     id: 'ping_microservice',
     parentId: 'admin_create_endpoint',
     title: 'Ping Diagnostic Service',
-    data: 'Internal health-check microservice at 10.0.1.2:9000/ping. Accepts a hostname parameter and runs a system ping command to verify connectivity to other internal services. The hostname value is interpolated directly into the shell command with no sanitization.',
-    baseUrl: 'http://10.0.1.2:9000/ping',
+    data: 'Diagnostic ping endpoint on the monitoring server at 10.30.1.11:9000/ping. Used by Grafana health checks to verify connectivity to other internal services. Accepts a hostname parameter and runs a system ping command. The hostname value is interpolated directly into the shell command with no sanitization.',
+    baseUrl: 'http://10.30.1.11:9000/ping',
     type: 'api',
     ring: 0,
-    ip: '10.0.1.2',
+    ip: '10.30.1.11',
     port: '9000',
-    zone: 'Internal App',
+    zone: 'Management',
     serviceInfo: [
       { label: 'Method', value: 'GET' },
       { label: 'Parameter', value: '?host=<hostname> — passed to system shell' },
@@ -1224,12 +1169,12 @@ export const sampleNodes: PentestNode[] = [
     parentId: 'ping_microservice',
     title: 'Production Database',
     data: 'Direct PostgreSQL access from the compromised server via local socket at postgres.internal:5432. The www-data user can read the pg_hba.conf trust entry for local connections. Full schema access including payments table with Stripe card tokens, orders with transaction history, and users with PII. A complete dump constitutes a PCI DSS violation and reportable data breach.',
-    baseUrl: 'postgresql://postgres.internal:5432/shopdb',
+    baseUrl: 'postgresql://203.0.113.10:5432/shopdb',
     type: 'database',
     ring: 0,
-    ip: '10.0.3.6',
+    ip: '203.0.113.10',
     port: '5432',
-    zone: 'Database',
+    zone: 'Perimeter',
     serviceInfo: [
       { label: 'Engine', value: 'PostgreSQL 15.3' },
       { label: 'Auth', value: 'Local socket — trust authentication (no password)', severity: 'critical' },
@@ -1293,13 +1238,13 @@ export const sampleNodes: PentestNode[] = [
     id: 'internal_monitoring',
     parentId: 'employee_portal',
     title: 'Grafana Dashboard',
-    data: 'Internal Grafana instance at 10.0.2.8:3000. Exposes infrastructure metrics, database query performance, and server health. Default credentials are commonly left unchanged on internal tools.',
-    baseUrl: 'http://10.0.2.8:3000',
+    data: 'Internal Grafana instance at 10.30.1.11:3000. Exposes infrastructure metrics, database query performance, and server health. Default credentials are commonly left unchanged on internal tools.',
+    baseUrl: 'http://10.30.1.11:3000',
     type: 'web_page',
     ring: 2,
-    ip: '10.0.2.8',
+    ip: '10.30.1.11',
     port: '3000',
-    zone: 'Internal Tools',
+    zone: 'Management',
     serviceInfo: [
       { label: 'Version', value: 'Grafana 10.2.3' },
       { label: 'CVE-2021-43798', value: 'Path traversal — patched in 8.3.1 (not applicable)', severity: 'info' },
@@ -1344,13 +1289,13 @@ export const sampleNodes: PentestNode[] = [
     id: 'internal_wiki',
     parentId: 'employee_portal',
     title: 'Confluence Wiki',
-    data: 'Internal Confluence instance at 10.0.2.6:8090. Corporate knowledge base likely containing architecture diagrams, credentials in runbooks, and deployment procedures.',
-    baseUrl: 'http://10.0.2.6:8090',
+    data: 'Internal wiki at 192.168.1.12:443. Corporate knowledge base likely containing architecture diagrams, credentials in runbooks, and deployment procedures.',
+    baseUrl: 'https://192.168.1.12',
     type: 'web_page',
     ring: 2,
-    ip: '10.0.2.6',
-    port: '8090',
-    zone: 'Internal Tools',
+    ip: '192.168.1.12',
+    port: '443',
+    zone: 'Corporate',
     serviceInfo: [
       { label: 'Version', value: 'Confluence 8.5.4 LTS' },
       { label: 'CVE-2023-22527', value: 'Template injection RCE — patched in 8.5.4', severity: 'info' },
@@ -1385,13 +1330,13 @@ export const sampleNodes: PentestNode[] = [
     id: 'internal_jenkins',
     parentId: 'employee_portal',
     title: 'Jenkins CI Server',
-    data: 'Jenkins automation server at 10.0.2.5:8080. CI/CD pipelines often contain deployment credentials, cloud keys, and have script consoles that allow direct code execution.',
-    baseUrl: 'http://10.0.2.5:8080',
+    data: 'Jenkins automation server at 10.20.1.10:8080. CI/CD pipelines often contain deployment credentials, cloud keys, and have script consoles that allow direct code execution.',
+    baseUrl: 'http://10.20.1.10:8080',
     type: 'internet_server',
     ring: 2,
-    ip: '10.0.2.5',
+    ip: '10.20.1.10',
     port: '8080',
-    zone: 'Internal Tools',
+    zone: 'Dev / CI',
     serviceInfo: [
       { label: 'Version', value: 'Jenkins 2.426.3 LTS' },
       { label: 'CVE-2024-23897', value: 'Arbitrary file read via CLI — patched in 2.426.3', severity: 'info' },
@@ -1433,180 +1378,78 @@ export const sampleNodes: PentestNode[] = [
     status: 'locked',
   },
 
-  // =========================================================================
-  // NEW DECOY CHILDREN — dead-end traps
-  // =========================================================================
-  {
-    id: 'smtp_internal_relay',
-    parentId: 'mail_server',
-    title: 'Internal Mail Relay',
-    data: 'Internal Postfix relay at mail-relay.internal:2525. Forwards authenticated messages to internal @corp.target.com addresses. NTLM auth negotiation observed — potential credential relay target.',
-    baseUrl: 'smtp://mail-relay.internal:2525',
-    type: 'internet_server',
-    ring: 3,
-    ip: '10.0.1.5',
-    port: '2525',
-    zone: 'Internal App',
-    serviceInfo: [
-      { label: 'Software', value: 'Postfix 3.7.6 (internal relay)' },
-      { label: 'NTLM Auth', value: 'NTLM negotiation supported — credential relay possible', severity: 'critical' },
-      { label: 'Internal Domains', value: 'Forwards to @corp.target.com — internal phishing vector', severity: 'high' },
-      { label: 'Credential Relay', value: 'NTLM challenge/response interceptable on network', severity: 'critical' },
-      { label: 'Mutual TLS', value: 'Client certificate required for relay — enforced' },
-      { label: 'LDAP Auth', value: 'Relay requires LDAP bind authentication' },
-      { label: 'IP Whitelist', value: 'Accepts connections from 10.0.0.0/8 only' },
-    ],
-    possibleActions: [
-      {
-        id: 'ntlm_relay',
-        name: 'NTLM Credential Relay',
-        hint: 'Can you reuse auth elsewhere?',
-        description: 'Intercept NTLM challenge/response to relay credentials against internal services.',
-        requiredAssets: [],
-        revealsNodes: [],
-        revealsAssets: [],
-        category: 'exploit',
-      },
-      {
-        id: 'credential_sniff',
-        name: 'Credential Sniffing',
-        hint: 'Is traffic encrypted?',
-        description: 'Capture authentication credentials transmitted during SMTP relay sessions.',
-        requiredAssets: [],
-        revealsNodes: [],
-        revealsAssets: [],
-        category: 'exploit',
-      },
-      {
-        id: 'internal_phish',
-        name: 'Internal Phishing via Relay',
-        hint: 'Can you reach internal users?',
-        description: 'Abuse the internal relay to send phishing emails to @corp.target.com addresses.',
-        requiredAssets: [],
-        revealsNodes: [],
-        revealsAssets: [],
-        category: 'exploit',
-      },
-    ],
-    discovered: false,
-    status: 'locked',
-  },
-  {
-    id: 'redis_session_store',
-    parentId: 'redis_cache',
-    title: 'Session Token Store',
-    data: 'Pre-AUTH INFO exposed the keyspace: sess:* keys hold JWT tokens for active user sessions, including sess:admin:* entries for admin sessions. Requirepass blocks GET/KEYS commands — the tokens are visible in metadata but values require authentication to read.',
-    baseUrl: 'redis://shop.target.com:6379/1',
-    type: 'database',
-    ring: 3,
-    ip: '10.0.1.10',
-    port: '6380',
-    zone: 'Internal App',
-    serviceInfo: [
-      { label: 'Admin Tokens', value: 'sess:admin:* keys contain valid admin JWT tokens', severity: 'critical' },
-      { label: 'No Expiry', value: 'Session keys have no TTL — tokens valid indefinitely', severity: 'high' },
-      { label: 'Token Replay', value: 'JWT tokens lack jti claim — replay attacks possible', severity: 'critical' },
-      { label: 'Requirepass', value: 'AUTH required — password not obtained' },
-      { label: 'IP-Bound Sessions', value: 'Tokens bound to originating IP via x-forwarded-for fingerprint' },
-      { label: 'Token Fingerprinting', value: 'JWT includes browser fingerprint in payload — mismatch rejects token' },
-    ],
-    possibleActions: [
-      {
-        id: 'session_hijack',
-        name: 'Session Hijacking',
-        hint: 'Can you impersonate someone?',
-        description: 'Steal active session tokens from Redis keyspace to impersonate logged-in users.',
-        requiredAssets: [],
-        revealsNodes: [],
-        revealsAssets: [],
-        category: 'exploit',
-      },
-      {
-        id: 'token_replay',
-        name: 'Token Replay Attack',
-        hint: 'Do sessions expire properly?',
-        description: 'Replay captured JWT tokens to establish authenticated sessions without credentials.',
-        requiredAssets: [],
-        revealsNodes: [],
-        revealsAssets: [],
-        category: 'exploit',
-      },
-      {
-        id: 'admin_session_steal',
-        name: 'Admin Session Theft',
-        hint: 'Any high-privilege sessions?',
-        description: 'Target sess:admin:* keys specifically to steal administrator session tokens.',
-        requiredAssets: [],
-        revealsNodes: [],
-        revealsAssets: [],
-        category: 'exploit',
-      },
-    ],
-    discovered: false,
-    status: 'locked',
-  },
 ];
 
 // =========================================================================
 // NETWORK DEVICES — infrastructure-only context (not attack targets)
 // =========================================================================
+// =========================================================================
+// NETWORK MAP — infrastructure topology (independent of game tree)
+// =========================================================================
+
 export const networkDevices: NetworkDevice[] = [
-  // Outermost — CDN / WAF
-  { id: 'cloudflare', label: 'Cloudflare WAF', ip: '1.1.1.1 / CDN', ring: 6, zone: 'Internet', color: '#f97316', iconType: 'waf', kind: 'device' },
+  // Protection nodes
+  { id: 'cloudflare',  label: 'Cloudflare WAF',    ip: 'CDN Edge',  ring: 6, zone: 'Internet',   color: '#f97316', iconType: 'waf', kind: 'firewall', rules: ['OWASP core rule set', 'DDoS mitigation', 'Bot & rate limiting'] },
+  { id: 'internal-fw', label: 'Internal Firewall',  ip: '10.0.0.1', ring: 3, zone: 'Protection', color: '#ff3366', iconType: 'waf', kind: 'firewall', rules: ['HTTPS :443 passthrough', 'Block UDP 631 inbound', 'Block inbound SMTP :25'] },
+  { id: 'deploy-gw',   label: 'Deploy Gateway',     ip: '10.0.0.2', port: '443', ring: 3, zone: 'Protection', color: '#ff3366', iconType: 'waf', kind: 'firewall', rules: ['Artifact signing required', 'Approved pipelines only', 'Audit all deployments'] },
+  { id: 'app-proxy',   label: 'App Gateway',        ip: '10.0.0.3', port: '443', ring: 3, zone: 'Protection', color: '#ff3366', iconType: 'waf', kind: 'firewall', rules: ['Wiki & helpdesk only', 'Block all other routes', 'HTTPS required'] },
+  { id: 'pam-vault',   label: 'PAM Vault',          ip: '10.30.0.1', port: '443', ring: 1, zone: 'Protection', color: '#ff3366', iconType: 'waf', kind: 'firewall', rules: ['MFA required', 'Time-limited credentials', 'Full session audit'] },
 
-  // Firewalls
-  { id: 'fw-01', label: 'FW-01', ip: '', ring: 5, zone: 'Perimeter', color: '#ff3366', iconType: 'waf', kind: 'firewall', rules: [':80/:443 → nginx', ':21 → FTP', ':25 → SMTP', '⚠ :6379 exposed'] },
-  { id: 'fw-02', label: 'FW-02', ip: '', ring: 3, zone: 'Internal', color: '#ff3366', iconType: 'waf', kind: 'firewall', rules: ['BLOCK default', 'SSRF → Admin :8080', 'nginx → DB :1433'] },
-  { id: 'fw-vpn', label: 'FW-VPN', ip: '', ring: 3, zone: 'VPN', color: '#ff3366', iconType: 'waf', kind: 'firewall', rules: ['VPN :443', 'Corp → Internal', 'Dev → Jenkins/Docker'] },
-  { id: 'fw-03', label: 'FW-03 DB', ip: '', ring: 1, zone: 'Database', color: '#ff3366', iconType: 'waf', kind: 'firewall', rules: ['MSSQL :1433', 'PostgreSQL :5432', 'Redis :6380'] },
-  { id: 'fw-04', label: 'FW-04 Dev', ip: '', ring: 1, zone: 'Dev / Cloud', color: '#ff3366', iconType: 'waf', kind: 'firewall', rules: ['Docker :2376', 'K8s :6443', 'AWS :443'] },
+  // Perimeter — internet-facing (shop.target.com)
+  { id: 'web-app',    label: 'Web App',     ip: '203.0.113.10', port: '443',  ring: 5, zone: 'Perimeter', color: '#00f0ff', iconType: 'webserver', kind: 'device', services: 'nginx 1.24 + Node.js' },
+  { id: 'database',   label: 'PostgreSQL',  ip: '203.0.113.10', port: '5432', ring: 5, zone: 'Perimeter', color: '#a855f7', iconType: 'postgres',  kind: 'device', services: 'PostgreSQL 15' },
+  { id: 'cache',      label: 'Redis Cache', ip: '203.0.113.10', port: '6379', ring: 5, zone: 'Perimeter', color: '#ef4444', iconType: 'redis',     kind: 'device', services: 'Redis 7' },
+  { id: 'mail-relay', label: 'Mail Relay',  ip: '203.0.113.11', port: '25',   ring: 5, zone: 'Perimeter', color: '#f59e0b', iconType: 'smtp',      kind: 'device', services: 'Postfix 3.6 (outbound)' },
 
-  // Corporate endpoints
-  { id: 'ep-admin', label: 'Admin', ip: '192.168.1.10', port: 'VPN', ring: 4, zone: 'Endpoints', color: '#ef4444', iconType: 'ep-admin', kind: 'device', services: 'Admin workstation' },
-  { id: 'ep-it', label: 'IT', ip: '192.168.1.11', port: 'VPN', ring: 4, zone: 'Endpoints', color: '#3b82f6', iconType: 'ep-it', kind: 'device', services: 'IT workstation' },
-  { id: 'ep-manager', label: 'Manager', ip: '192.168.1.12', port: 'VPN', ring: 4, zone: 'Endpoints', color: '#3b82f6', iconType: 'ep-manager', kind: 'device', services: 'Manager workstation' },
-  { id: 'ep-finance', label: 'Finance', ip: '192.168.1.13', port: 'VPN', ring: 4, zone: 'Endpoints', color: '#3b82f6', iconType: 'ep-finance', kind: 'device', services: 'Finance workstation' },
-  { id: 'ep-dev', label: 'Developer', ip: '192.168.1.14', port: 'VPN', ring: 4, zone: 'Endpoints', color: '#00ff88', iconType: 'ep-dev', kind: 'device', services: 'Dev workstation' },
+  // Corporate — employee daily work (corp.target.com)
+  { id: 'corp-portal', label: 'Corp Portal', ip: '192.168.1.5', port: '443', ring: 3, zone: 'Corporate', color: '#3b82f6', iconType: 'webserver', kind: 'device', services: 'corp.target.com' },
+  { id: 'helpdesk',  label: 'Helpdesk',  ip: '192.168.1.11', port: '443', ring: 3, zone: 'Corporate', color: '#3b82f6', iconType: 'ticket',  kind: 'device', services: 'osTicket 1.17', hasCVE: true },
+  { id: 'wiki',      label: 'Wiki',      ip: '192.168.1.12', port: '443', ring: 3, zone: 'Corporate', color: '#3b82f6', iconType: 'wiki',    kind: 'device', services: 'BookStack 24.x' },
+  { id: 'printer',   label: 'Printer',   ip: '192.168.1.20', port: '631', ring: 3, zone: 'Corporate', color: '#3b82f6', iconType: 'printer', kind: 'device', services: 'CUPS 2.0.1', hasCVE: true },
 
-  // Background databases (no game node)
-  { id: 'mssql', label: 'MSSQL', ip: '10.0.3.5', port: '1433', ring: 0, zone: 'Database', color: '#a855f7', iconType: 'mssql', kind: 'device', services: 'SQL Server 2019' },
-  { id: 'redis-db', label: 'Redis DB', ip: '10.0.3.7', port: '6379', ring: 0, zone: 'Database', color: '#a855f7', iconType: 'redis', kind: 'device', services: 'Persistent store' },
+  // Development — building and shipping (dev.target.com)
+  { id: 'dev-portal', label: 'Dev Portal', ip: '10.20.1.5', port: '443', ring: 2, zone: 'Development', color: '#fbbf24', iconType: 'webserver', kind: 'device', services: 'dev.target.com' },
+  { id: 'jenkins', label: 'Jenkins CI',   ip: '10.20.1.10', port: '8080', ring: 2, zone: 'Development', color: '#fbbf24', iconType: 'jenkins', kind: 'device', services: 'Jenkins 2.426', hasCVE: true },
+  { id: 'gitlab',  label: 'GitLab',       ip: '10.20.1.11', port: '443',  ring: 2, zone: 'Development', color: '#f97316', iconType: 'git',     kind: 'device', services: 'GitLab CE 16', hasCVE: true },
+  { id: 'nexus',   label: 'Nexus Repo',   ip: '10.20.1.12', port: '8081', ring: 2, zone: 'Development', color: '#00f0ff', iconType: 'package', kind: 'device', services: 'Nexus 3.68' },
 
-  // Dev / Cloud infra (no game node)
-  { id: 'docker', label: 'Docker Host', ip: '10.0.4.5', port: '2376', ring: 0, zone: 'Dev / Cloud', color: '#00ff88', iconType: 'docker', kind: 'device', services: 'Container runtime' },
-  { id: 'kubernetes', label: 'Kubernetes', ip: '10.0.4.6', port: '6443', ring: 0, zone: 'Dev / Cloud', color: '#00ff88', iconType: 'kubernetes', kind: 'device', services: 'k8s control' },
-  { id: 'jira', label: 'Jira', ip: '10.0.2.7', port: '8080', ring: 2, zone: 'Internal Tools', color: '#3b82f6', iconType: 'jira', kind: 'device', services: 'Issue tracker' },
+  // Management — infrastructure backbone (mgmt.target.com)
+  { id: 'active-directory', label: 'Active Directory', ip: '10.30.1.10', port: '389',  ring: 0, zone: 'Management', color: '#a855f7', iconType: 'directory', kind: 'device', services: 'Windows AD (LDAP+Kerberos)' },
+  { id: 'monitoring',       label: 'Grafana',          ip: '10.30.1.11', port: '3000', ring: 0, zone: 'Management', color: '#f97316', iconType: 'grafana',   kind: 'device', services: 'Grafana 8.2', hasCVE: true },
+  { id: 'backups',          label: 'Backup Server',    ip: '10.30.1.12', port: '9090', ring: 0, zone: 'Management', color: '#00ff88', iconType: 'backup',    kind: 'device', services: 'Veeam' },
 ];
 
 // =========================================================================
-// NETWORK EDGES — connectivity between nodes/devices
+// NETWORK EDGES — connectivity between zones via protection nodes
 // =========================================================================
+
 export const networkEdges: NetworkEdge[] = [
   // Internet → Perimeter
-  { id: 'e-cf-fw01', source: 'cloudflare', target: 'fw-01' },
+  { id: 'e-cf-web', source: 'cloudflare', target: 'web-app' },
 
-  // Perimeter → DMZ zones (game nodes)
-  { id: 'e-fw01-root', source: 'fw-01', target: 'root' },
-  { id: 'e-fw01-ftp', source: 'fw-01', target: 'ftp_server' },
-  { id: 'e-fw01-smtp', source: 'fw-01', target: 'mail_server' },
-  { id: 'e-fw01-redis', source: 'fw-01', target: 'redis_cache' },
+  // Perimeter ↔ Protection
+  { id: 'e-web-deploy', source: 'web-app', target: 'deploy-gw' },
+  { id: 'e-web-fw',     source: 'web-app', target: 'internal-fw' },
 
-  // DMZ → Internal firewalls
-  { id: 'e-root-fw02', source: 'root', target: 'fw-02' },
-  { id: 'e-fw02-employee', source: 'fw-02', target: 'employee_portal' },
+  // Deploy GW ↔ Dev (bidirectional: pull artifacts + push deployments)
+  { id: 'e-deploy-dev', source: 'deploy-gw', target: 'dev-portal' },
+  { id: 'e-dev-deploy', source: 'dev-portal', target: 'deploy-gw' },
 
-  // Endpoints → VPN → Internal
-  { id: 'e-endpoints-vpn', source: 'ep-admin', target: 'fw-vpn' },
-  { id: 'e-vpn-tools', source: 'fw-vpn', target: 'internal_jenkins' },
-  { id: 'e-vpn-app', source: 'fw-vpn', target: 'employee_portal' },
+  // Internal FW → Corporate
+  { id: 'e-fw-corp', source: 'internal-fw', target: 'corp-portal' },
 
-  // Internal → DB firewalls
-  { id: 'e-app-fw03', source: 'admin_create_endpoint', target: 'fw-03' },
-  { id: 'e-fw03-mssql', source: 'fw-03', target: 'mssql' },
-  { id: 'e-fw03-proddb', source: 'fw-03', target: 'production_db_server' },
+  // Dev ↔ Corporate (cross-zone wiki/helpdesk access through App Gateway)
+  { id: 'e-dev-proxy',  source: 'dev-portal',  target: 'app-proxy' },
+  { id: 'e-proxy-corp', source: 'app-proxy',   target: 'corp-portal' },
 
-  // Internal → Dev firewalls
-  { id: 'e-tools-fw04', source: 'internal_jenkins', target: 'fw-04' },
-  { id: 'e-fw04-docker', source: 'fw-04', target: 'docker' },
-  { id: 'e-fw04-k8s', source: 'fw-04', target: 'kubernetes' },
+  // Dev → PAM Vault
+  { id: 'e-dev-pam', source: 'dev-portal', target: 'pam-vault' },
+
+  // Corporate → PAM Vault
+  { id: 'e-corp-pam', source: 'corp-portal', target: 'pam-vault' },
+
+  // PAM Vault → Management
+  { id: 'e-pam-ad',      source: 'pam-vault', target: 'active-directory' },
+  { id: 'e-pam-grafana', source: 'pam-vault', target: 'monitoring' },
+  { id: 'e-pam-backup',  source: 'pam-vault', target: 'backups' },
 ];

@@ -53,6 +53,8 @@ export interface NetworkDevice {
   services?: string;
   kind: 'device' | 'firewall';
   rules?: string[];
+  isTarget?: boolean;
+  hasCVE?: boolean;
 }
 
 export interface NetworkEdge {

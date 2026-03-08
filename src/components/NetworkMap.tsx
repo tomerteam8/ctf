@@ -1,106 +1,127 @@
 import { ReactFlow, Background, BackgroundVariant, Controls, MiniMap, Handle, Position } from '@xyflow/react';
 import type { Node, Edge, NodeProps } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { sampleNodes, networkDevices, networkEdges } from '../data/gameData';
-import type { PentestNode, NetworkDevice } from '../data/types';
+import { networkDevices, networkEdges } from '../data/gameData';
+import type { NetworkDevice } from '../data/types';
 
-// ── SVG Icons ─────────────────────────────────────────────────────────────────
+// ── Colors ───────────────────────────────────────────────────────────────────
+
+const CVE_COLOR = '#fbbf24';        // amber-400 — faint yellow for CVE nodes
+const CVE_BORDER = '#fbbf2466';
+const CVE_BG = 'rgba(251,191,36,0.08)';
+const CVE_GLOW = '0 0 8px rgba(251,191,36,0.15)';
+
+function bgColor(hex: string, alpha = 0.06): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// ── SVG Icons ────────────────────────────────────────────────────────────────
+
 const sp = { fill: 'none', strokeWidth: 1.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 
 function Icon({ type, color, size = 22 }: { type: string; color: string; size?: number }) {
   const s = { ...sp, stroke: color, width: size, height: size, viewBox: '0 0 24 24' };
   switch (type) {
-    case 'waf':        return <svg {...s}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>;
-    case 'webserver':  return <svg {...s}><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><line x1="2" y1="12" x2="22" y2="12"/></svg>;
-    case 'ftp':        return <svg {...s}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><polyline points="12,12 15,15 12,18"/><line x1="8" y1="15" x2="15" y2="15"/></svg>;
-    case 'smtp':       return <svg {...s}><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,4 12,13 2,4"/></svg>;
-    case 'redis':      return <svg {...s}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><line x1="3.27" y1="6.96" x2="12" y2="12.01"/><line x1="20.73" y1="6.96" x2="12" y2="12.01"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>;
-    case 'graphql':    return <svg {...s}><polygon points="12,2 22,8 22,16 12,22 2,16 2,8"/><circle cx="12" cy="12" r="2" fill={color}/></svg>;
-    case 'search':     return <svg {...s}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
-    case 'admin':      return <svg {...s}><path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>;
-    case 'ping':       return <svg {...s}><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>;
-    case 'exchange':   return <svg {...s}><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,4 12,13 2,4"/><path d="M16 17h4M18 15l2 2-2 2"/></svg>;
-    case 'session':    return <svg {...s}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
-    case 'jenkins':    return <svg {...s}><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>;
-    case 'confluence': return <svg {...s}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>;
-    case 'jira':       return <svg {...s}><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/><line x1="12" y1="7" x2="12" y2="17"/></svg>;
-    case 'grafana':    return <svg {...s}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>;
-    case 'mssql':      return <svg {...s}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>;
-    case 'postgres':   return <svg {...s}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M21 5v6"/><path d="M21 15a3 3 0 0 0-3 3v2"/></svg>;
-    case 'docker':     return <svg {...s}><path d="M2 15c.6.5 1.2 1 2.5 1 1.5 0 1.5-1 3-1s1.5 1 3 1 1.5-1 3-1 1.5 1 3 1c1.3 0 1.9-.5 2.5-1"/><path d="M22 10.5a5 5 0 0 0-4.9-4H15V4a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8"/><rect x="2" y="10" width="20" height="8" rx="2"/></svg>;
-    case 'kubernetes': return <svg {...s}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2" fill={color}/><line x1="12" y1="2" x2="12" y2="10"/><line x1="12" y1="14" x2="12" y2="22"/><line x1="2" y1="12" x2="10" y2="12"/><line x1="14" y1="12" x2="22" y2="12"/><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"/><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"/><line x1="19.07" y1="4.93" x2="14.83" y2="9.17"/><line x1="9.17" y1="14.83" x2="4.93" y2="19.07"/></svg>;
-    case 'aws':        return <svg {...s}><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/><polyline points="7,12 12,17 17,12"/></svg>;
-    case 'ep-admin':   return <svg {...s}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>;
-    case 'ep-it':      return <svg {...s}><polyline points="4,17 10,11 4,5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>;
-    case 'ep-manager': return <svg {...s}><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>;
-    case 'ep-finance': return <svg {...s}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>;
-    case 'ep-dev':     return <svg {...s}><polyline points="16,18 22,12 16,6"/><polyline points="8,6 2,12 8,18"/></svg>;
-    default:           return <svg {...s}><rect x="3" y="3" width="18" height="18" rx="2"/></svg>;
+    case 'waf':       return <svg {...s}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>;
+    case 'webserver': return <svg {...s}><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><line x1="2" y1="12" x2="22" y2="12"/></svg>;
+    case 'postgres':  return <svg {...s}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M21 5v6"/><path d="M21 15a3 3 0 0 0-3 3v2"/></svg>;
+    case 'redis':     return <svg {...s}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><line x1="3.27" y1="6.96" x2="12" y2="12.01"/><line x1="20.73" y1="6.96" x2="12" y2="12.01"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>;
+    case 'smtp':      return <svg {...s}><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,4 12,13 2,4"/></svg>;
+    case 'hr':        return <svg {...s}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+    case 'ticket':    return <svg {...s}><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/><line x1="12" y1="7" x2="12" y2="17"/></svg>;
+    case 'wiki':      return <svg {...s}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>;
+    case 'printer':   return <svg {...s}><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>;
+    case 'jenkins':   return <svg {...s}><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>;
+    case 'git':       return <svg {...s}><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg>;
+    case 'package':   return <svg {...s}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27,6.96 12,12.01 20.73,6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>;
+    case 'directory': return <svg {...s}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+    case 'grafana':   return <svg {...s}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>;
+    case 'backup':    return <svg {...s}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+    default:          return <svg {...s}><rect x="3" y="3" width="18" height="18" rx="2"/></svg>;
   }
 }
 
-// ── Device node (lives inside a zone) ─────────────────────────────────────────
+// ── Shared handle style (invisible) ──────────────────────────────────────────
+
+const H: React.CSSProperties = { opacity: 0, width: 1, height: 1 };
+
+// ── Device node ──────────────────────────────────────────────────────────────
+
 interface DeviceData {
   label: string; ip: string; port?: string; iconType: string;
-  color: string; bg: string; isTarget?: boolean; services?: string;
+  color: string; bg: string; services?: string; hasCVE?: boolean;
 }
 
 function DeviceNode({ data }: NodeProps) {
   const d = data as unknown as DeviceData;
+  const cve = d.hasCVE;
+
   return (
     <div style={{
       width: 128, padding: '7px 8px 6px',
-      background: d.isTarget ? 'rgba(255,51,102,0.10)' : d.bg,
-      border: `1.5px solid ${d.isTarget ? '#ff336677' : d.color + '55'}`,
+      background: d.bg,
+      border: `1.5px solid ${d.color}55`,
       borderRadius: 7,
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-      boxShadow: d.isTarget ? '0 0 10px rgba(255,51,102,0.12)' : 'none',
       position: 'relative',
+      outline: cve ? `2px solid ${CVE_BORDER}` : 'none',
+      outlineOffset: 2,
+      boxShadow: cve ? CVE_GLOW : 'none',
     }}>
-      <Handle type="target" position={Position.Top}    style={{ opacity: 0, width: 1, height: 1 }} />
-      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, width: 1, height: 1 }} />
-      <Handle type="source" position={Position.Left}   id="left"  style={{ opacity: 0, width: 1, height: 1 }} />
-      <Handle type="target" position={Position.Right}  id="right" style={{ opacity: 0, width: 1, height: 1 }} />
-      <Icon type={d.iconType} color={d.isTarget ? '#ff6688' : d.color} size={22} />
-      <div style={{ fontSize: 9, fontWeight: 700, color: d.isTarget ? '#fca5a5' : '#e2e8f0', textAlign: 'center', lineHeight: 1.2, marginTop: 1 }}>
+      {/* Center handles */}
+      <Handle type="target" position={Position.Top}    style={H} />
+      <Handle type="source" position={Position.Bottom} style={H} />
+      <Handle type="source" position={Position.Left}   id="left"    style={H} />
+      <Handle type="target" position={Position.Right}  id="right"   style={H} />
+      <Handle type="source" position={Position.Right}  id="right-s" style={H} />
+      <Handle type="target" position={Position.Left}   id="left-t"  style={H} />
+      {/* Offset handles for spaced connections */}
+      <Handle type="target" position={Position.Top}    id="top-l"   style={{ ...H, left: '38%' }} />
+      <Handle type="target" position={Position.Top}    id="top-r"   style={{ ...H, left: '62%' }} />
+      <Handle type="source" position={Position.Top}    id="top-s"   style={{ ...H, left: '62%' }} />
+      <Handle type="source" position={Position.Bottom} id="bottom-l" style={{ ...H, left: '38%' }} />
+      <Handle type="source" position={Position.Bottom} id="bottom-r" style={{ ...H, left: '62%' }} />
+      <Icon type={d.iconType} color={d.color} size={22} />
+      <div style={{ fontSize: 9, fontWeight: 700, color: '#e2e8f0', textAlign: 'center', lineHeight: 1.2, marginTop: 1 }}>
         {d.label}
       </div>
       <div style={{ fontSize: 7, color: '#475569', fontFamily: 'monospace' }}>{d.ip}</div>
       {d.port && (
-        <div style={{ fontSize: 6, color: d.isTarget ? '#ff3366' : d.color, background: `${d.isTarget ? '#ff336618' : d.color + '18'}`, padding: '1px 5px', borderRadius: 3 }}>
+        <div style={{
+          fontSize: 6,
+          color: d.color,
+          background: d.color + '18',
+          padding: '1px 5px', borderRadius: 3,
+        }}>
           :{d.port}
         </div>
       )}
-      {d.isTarget && (
-        <div style={{
-          position: 'absolute', top: -5, right: -5,
-          width: 8, height: 8, borderRadius: '50%',
-          background: '#ff3366', boxShadow: '0 0 5px #ff3366',
-          animation: 'blink 1.5s ease-in-out infinite',
-        }} />
+      {d.services && (
+        <div style={{ fontSize: 6, color: '#64748b', marginTop: 1, textAlign: 'center' }}>
+          {d.services}
+        </div>
       )}
     </div>
   );
 }
 
-// ── Zone node (draggable square container) ────────────────────────────────────
-interface ZoneData { label: string; subnet: string; color: string; bg: string }
+// ── Zone background node ─────────────────────────────────────────────────────
 
-function ZoneNode({ data }: NodeProps) {
+interface ZoneData { label: string; subtitle: string; color: string; bg: string }
+
+function ZoneBackground({ data }: NodeProps) {
   const d = data as unknown as ZoneData;
   return (
     <div style={{
       width: '100%', height: '100%',
       background: d.bg,
-      border: `1.5px solid ${d.color}44`,
+      border: `1.5px dashed ${d.color}33`,
       borderRadius: 10,
+      pointerEvents: 'none',
     }}>
-      <Handle type="target" position={Position.Top}    style={{ opacity: 0, width: 1, height: 1 }} />
-      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, width: 1, height: 1 }} />
-      <Handle type="source" position={Position.Left}   id="left"  style={{ opacity: 0, width: 1, height: 1 }} />
-      <Handle type="target" position={Position.Right}  id="right" style={{ opacity: 0, width: 1, height: 1 }} />
-      <Handle type="source" position={Position.Right}  id="right-s" style={{ opacity: 0, width: 1, height: 1 }} />
-      <Handle type="target" position={Position.Left}   id="left-t"  style={{ opacity: 0, width: 1, height: 1 }} />
       <div style={{
         position: 'absolute', top: 8, left: 12, right: 12,
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -109,18 +130,19 @@ function ZoneNode({ data }: NodeProps) {
           {d.label}
         </span>
         <span style={{ fontSize: 7, color: `${d.color}88`, fontFamily: 'monospace', letterSpacing: '0.06em' }}>
-          {d.subnet}
+          {d.subtitle}
         </span>
       </div>
     </div>
   );
 }
 
-// ── Firewall node (square) ────────────────────────────────────────────────────
-interface FwData { label: string; rules: string[] }
+// ── Protection node ──────────────────────────────────────────────────────────
 
-function FirewallNode({ data }: NodeProps) {
-  const d = data as unknown as FwData;
+interface ProtectionData { label: string; rules: string[] }
+
+function ProtectionNode({ data }: NodeProps) {
+  const d = data as unknown as ProtectionData;
   return (
     <div style={{
       width: '100%', height: '100%',
@@ -131,14 +153,23 @@ function FirewallNode({ data }: NodeProps) {
       alignItems: 'center', justifyContent: 'center',
       gap: 6, padding: '8px 10px',
     }}>
-      <Handle type="target" position={Position.Top}    style={{ opacity: 0, width: 1, height: 1 }} />
-      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, width: 1, height: 1 }} />
-      <Handle type="source" position={Position.Left}   id="left"  style={{ opacity: 0, width: 1, height: 1 }} />
-      <Handle type="target" position={Position.Right}  id="right" style={{ opacity: 0, width: 1, height: 1 }} />
-      <Handle type="source" position={Position.Right}  id="right-s" style={{ opacity: 0, width: 1, height: 1 }} />
-      <Handle type="target" position={Position.Left}   id="left-t"  style={{ opacity: 0, width: 1, height: 1 }} />
+      {/* Center handles */}
+      <Handle type="target" position={Position.Top}    style={H} />
+      <Handle type="source" position={Position.Bottom} style={H} />
+      <Handle type="source" position={Position.Left}   id="left"    style={H} />
+      <Handle type="target" position={Position.Right}  id="right"   style={H} />
+      <Handle type="source" position={Position.Right}  id="right-s" style={H} />
+      <Handle type="target" position={Position.Left}   id="left-t"  style={H} />
+      {/* Offset handles for spaced connections */}
+      <Handle type="target" position={Position.Top}    id="top-l"      style={{ ...H, left: '38%' }} />
+      <Handle type="target" position={Position.Top}    id="top-r"      style={{ ...H, left: '62%' }} />
+      <Handle type="source" position={Position.Bottom} id="bottom-l"   style={{ ...H, left: '28%' }} />
+      <Handle type="source" position={Position.Bottom} id="bottom-c"   style={{ ...H, left: '50%' }} />
+      <Handle type="source" position={Position.Bottom} id="bottom-r"   style={{ ...H, left: '72%' }} />
+      <Handle type="target" position={Position.Bottom} id="bottom-tl"  style={{ ...H, left: '38%' }} />
+      <Handle type="target" position={Position.Bottom} id="bottom-tr"  style={{ ...H, left: '62%' }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-        <span style={{ fontSize: 14 }}>🔥</span>
+        <span style={{ fontSize: 14 }}>🛡</span>
         <span style={{ fontSize: 8, fontWeight: 800, color: '#ff3366', letterSpacing: '0.12em', textTransform: 'uppercase', textAlign: 'center' }}>
           {d.label}
         </span>
@@ -157,345 +188,185 @@ function FirewallNode({ data }: NodeProps) {
   );
 }
 
-const nodeTypes = { device: DeviceNode, zone: ZoneNode, firewall: FirewallNode };
+const nodeTypes = { device: DeviceNode, zoneBackground: ZoneBackground, protection: ProtectionNode };
 
-// ── Layout helpers ────────────────────────────────────────────────────────────
-const G22 = [
-  { x: 12, y: 42 }, { x: 152, y: 42 },
-  { x: 12, y: 152 }, { x: 152, y: 152 },
-];
-const G32 = [
-  { x: 10, y: 42 }, { x: 148, y: 42 }, { x: 286, y: 42 },
-  { x: 79, y: 152 }, { x: 217, y: 152 },
-];
-const G13 = [
-  { x: 10, y: 42 }, { x: 148, y: 42 }, { x: 286, y: 42 },
-];
-
-function devNode(
-  id: string, parentId: string, pos: { x: number; y: number }, data: DeviceData
-): Node {
-  return {
-    id, type: 'device', parentId, extent: 'parent' as const,
-    position: pos, data: data as unknown as Record<string, unknown>,
-    draggable: false, selectable: false,
-  };
-}
-
-// ── Lookup maps from shared data ──────────────────────────────────────────────
-const gameNodeMap = new Map<string, PentestNode>();
-for (const n of sampleNodes) gameNodeMap.set(n.id, n);
+// ── Data lookup ──────────────────────────────────────────────────────────────
 
 const deviceMap = new Map<string, NetworkDevice>();
 for (const d of networkDevices) deviceMap.set(d.id, d);
 
-/** Helper: build bg color from a hex color */
-function bg(color: string, alpha = 0.06): string {
-  // Parse hex → rgba
-  const r = parseInt(color.slice(1, 3), 16);
-  const g = parseInt(color.slice(3, 5), 16);
-  const b = parseInt(color.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
-/** Mapping: game node ID → visual display properties for the network map */
-const GAME_NODE_VIS: Record<string, { visualId: string; iconType: string; color: string; label?: string; services?: string }> = {
-  root:                  { visualId: 'nginx',          iconType: 'webserver', color: '#00f0ff', label: 'Web Server',      services: 'nginx 1.24'    },
-  graphql_api:           { visualId: 'graphql-api',    iconType: 'graphql',   color: '#e040fb',                           services: 'introspect on' },
-  search_api:            { visualId: 'search-api',     iconType: 'search',    color: '#00f0ff',                           services: 'SQLi vuln'     },
-  payment_webhook:       { visualId: 'payment-webhook',iconType: 'session',   color: '#00ff88', label: 'Pay Webhook',     services: 'Stripe replay' },
-  ftp_server:            { visualId: 'ftp',            iconType: 'ftp',       color: '#f59e0b', label: 'FTP Server',      services: 'vsftpd 3.0'    },
-  mail_server:           { visualId: 'smtp',           iconType: 'smtp',      color: '#f59e0b', label: 'SMTP Server',     services: 'Postfix 3.6'   },
-  redis_cache:           { visualId: 'redis-cache',    iconType: 'redis',     color: '#ef4444', label: 'Redis Cache',     services: '\u26a0 NOAUTH' },
-  admin_create_endpoint: { visualId: 'admin-ep',       iconType: 'admin',     color: '#ff3366', label: 'Admin Endpoint',  services: '/admin/create'  },
-  ping_microservice:     { visualId: 'ping-svc',       iconType: 'ping',      color: '#ff3366', label: 'Ping Service',    services: 'RCE \u26a0 inject' },
-  smtp_internal_relay:   { visualId: 'exchange',       iconType: 'exchange',  color: '#00f0ff', label: 'Exchange',        services: 'Internal relay' },
-  redis_session_store:   { visualId: 'redis-session',  iconType: 'session',   color: '#00f0ff', label: 'Session Store',   services: 'Redis \u00b7 JWT' },
-  internal_jenkins:      { visualId: 'jenkins',        iconType: 'jenkins',   color: '#fbbf24', label: 'Jenkins CI',      services: 'Script console' },
-  internal_wiki:         { visualId: 'confluence',     iconType: 'confluence',color: '#3b82f6',                           services: 'CVE-2022-26134'},
-  internal_monitoring:   { visualId: 'grafana',        iconType: 'grafana',   color: '#f97316',                           services: 'Default creds' },
-  production_db_server:  { visualId: 'postgres',       iconType: 'postgres',  color: '#a855f7', label: 'PostgreSQL',      services: 'GraphQL DB'    },
-  cloud_metadata:        { visualId: 'aws',            iconType: 'aws',       color: '#00ff88', label: 'AWS Gateway',     services: 'NAT \u00b7 us-east-1' },
-};
-
-/** Build a DeviceData from a game node + its visual config */
-function gameDeviceData(nodeId: string): DeviceData {
-  const node = gameNodeMap.get(nodeId)!;
-  const vis = GAME_NODE_VIS[nodeId]!;
+function toDeviceData(dev: NetworkDevice): DeviceData {
   return {
-    label: vis.label ?? node.title,
-    ip: node.ip ?? '',
-    port: node.port,
-    iconType: vis.iconType,
-    color: vis.color,
-    bg: bg(vis.color, vis.color === '#ef4444' ? 0.08 : 0.06),
-    isTarget: true,
-    services: vis.services,
+    label: dev.label, ip: dev.ip, port: dev.port,
+    iconType: dev.iconType, color: dev.color,
+    bg: bgColor(dev.color), services: dev.services,
+    hasCVE: dev.hasCVE,
   };
 }
 
-/** Build a DeviceData from a network device */
-function infraDeviceData(devId: string): DeviceData {
-  const dev = deviceMap.get(devId)!;
-  return {
-    label: dev.label,
-    ip: dev.ip,
-    port: dev.port,
-    iconType: dev.iconType,
-    color: dev.color,
-    bg: bg(dev.color, dev.color === '#ef4444' ? 0.08 : dev.color === '#00ff88' ? 0.07 : 0.08),
-    services: dev.services,
-  };
+// ── Zone definitions ─────────────────────────────────────────────────────────
+//
+// To add/remove nodes: edit the deviceIds array and adjust width/height.
+// Grid layout is automatic — devices fill left-to-right, top-to-bottom.
+
+interface ZoneDef {
+  id: string; label: string; subtitle: string; color: string;
+  x: number; y: number; width: number; height: number;
+  deviceIds: string[]; cols: number;
 }
 
-// ── Build NODES from shared data ──────────────────────────────────────────────
-const NODES: Node[] = [
+const PAD_X = 20;
+const PAD_Y = 40;
+const CELL_W = 148;
+const CELL_H = 100;
 
-  // ── Cloudflare (standalone) ─────────────────────────────────────────────────
-  (() => {
-    const dev = deviceMap.get('cloudflare')!;
-    return {
-      id: 'cloudflare', type: 'device' as const,
-      position: { x: 840, y: 50 },
-      data: { label: dev.label, ip: dev.ip, iconType: dev.iconType, color: dev.color, bg: bg(dev.color) },
-      draggable: true, selectable: false,
-    };
-  })(),
+function zoneSize(cols: number, rows: number): { width: number; height: number } {
+  return { width: PAD_X * 2 + cols * CELL_W, height: PAD_Y + rows * CELL_H + 15 };
+}
 
-  // ╔══════════════════════════════╗
-  // ║  ZONE: ENDPOINTS             ║ 420×270
-  // ╚══════════════════════════════╝
+const ZONES: ZoneDef[] = [
   {
-    id: 'zone-endpoints', type: 'zone',
-    position: { x: 20, y: 520 },
-    style: { width: 420, height: 270 },
-    data: { label: 'Endpoints', subnet: '192.168.1.0/24', color: '#3b82f6', bg: 'rgba(59,130,246,0.05)' },
-    draggable: true, selectable: false,
+    id: 'zone-perimeter', label: 'Perimeter', subtitle: 'shop.target.com  ·  203.0.113.0/24',
+    color: '#f59e0b', x: 185, y: 200, ...zoneSize(4, 1),
+    deviceIds: ['web-app', 'database', 'cache', 'mail-relay'], cols: 4,
   },
-  devNode('ep-admin',   'zone-endpoints', G32[0], infraDeviceData('ep-admin')),
-  devNode('ep-it',      'zone-endpoints', G32[1], infraDeviceData('ep-it')),
-  devNode('ep-manager', 'zone-endpoints', G32[2], infraDeviceData('ep-manager')),
-  devNode('ep-finance', 'zone-endpoints', G32[3], infraDeviceData('ep-finance')),
-  devNode('ep-dev',     'zone-endpoints', G32[4], infraDeviceData('ep-dev')),
-
-  // ╔══════════════════════════════╗
-  // ║  ZONE: WEB SERVICES DMZ      ║ 295×270
-  // ╚══════════════════════════════╝
   {
-    id: 'zone-web-dmz', type: 'zone',
-    position: { x: 480, y: 520 },
-    style: { width: 295, height: 270 },
-    data: { label: 'Web Services', subnet: '203.0.113.0/24', color: '#f59e0b', bg: 'rgba(245,158,11,0.05)' },
-    draggable: true, selectable: false,
+    id: 'zone-devci', label: 'Development', subtitle: 'dev.target.com  ·  10.20.1.0/24',
+    color: '#fbbf24', x: 50, y: 700, ...zoneSize(2, 2),
+    deviceIds: ['jenkins', 'dev-portal', 'gitlab', 'nexus'], cols: 2,
   },
-  devNode('nginx',           'zone-web-dmz', G22[0], gameDeviceData('root')),
-  devNode('graphql-api',     'zone-web-dmz', G22[1], gameDeviceData('graphql_api')),
-  devNode('search-api',      'zone-web-dmz', G22[2], gameDeviceData('search_api')),
-  devNode('payment-webhook', 'zone-web-dmz', G22[3], gameDeviceData('payment_webhook')),
-
-  // ╔══════════════════════════════╗
-  // ║  ZONE: NETWORK SERVICES DMZ  ║ 420×160
-  // ╚══════════════════════════════╝
   {
-    id: 'zone-net-dmz', type: 'zone',
-    position: { x: 1000, y: 520 },
-    style: { width: 420, height: 160 },
-    data: { label: 'Network Services', subnet: '203.0.113.0/24', color: '#f59e0b', bg: 'rgba(245,158,11,0.05)' },
-    draggable: true, selectable: false,
+    id: 'zone-corporate', label: 'Corporate', subtitle: 'corp.target.com  ·  192.168.1.0/24',
+    color: '#3b82f6', x: 640, y: 700, ...zoneSize(2, 2),
+    deviceIds: ['corp-portal', 'helpdesk', 'wiki', 'printer'], cols: 2,
   },
-  devNode('ftp',         'zone-net-dmz', G13[0], gameDeviceData('ftp_server')),
-  devNode('smtp',        'zone-net-dmz', G13[1], gameDeviceData('mail_server')),
-  devNode('redis-cache', 'zone-net-dmz', G13[2], gameDeviceData('redis_cache')),
-
-  // ╔══════════════════════════════╗
-  // ║  FW-VPN                      ║
-  // ╚══════════════════════════════╝
-  (() => {
-    const fw = deviceMap.get('fw-vpn')!;
-    return {
-      id: 'fw-vpn', type: 'firewall' as const,
-      position: { x: 165, y: 880 },
-      style: { width: 220, height: 160 },
-      data: { label: fw.label, rules: fw.rules ?? [] },
-      draggable: true, selectable: false,
-    };
-  })(),
-
-  // ╔══════════════════════════════╗
-  // ║  FW-01 Perimeter             ║
-  // ╚══════════════════════════════╝
-  (() => {
-    const fw = deviceMap.get('fw-01')!;
-    return {
-      id: 'fw-01', type: 'firewall' as const,
-      position: { x: 809, y: 270 },
-      style: { width: 220, height: 160 },
-      data: { label: fw.label, rules: fw.rules ?? [] },
-      draggable: true, selectable: false,
-    };
-  })(),
-
-  // ╔══════════════════════════════╗
-  // ║  ZONE: INTERNAL APP          ║ 295×270
-  // ╚══════════════════════════════╝
   {
-    id: 'zone-app', type: 'zone',
-    position: { x: 670, y: 1130 },
-    style: { width: 295, height: 270 },
-    data: { label: 'Internal App', subnet: '10.0.1.0/24', color: '#00f0ff', bg: 'rgba(0,240,255,0.04)' },
-    draggable: true, selectable: false,
+    id: 'zone-management', label: 'Management', subtitle: 'mgmt.target.com  ·  10.30.1.0/24',
+    color: '#a855f7', x: 260, y: 1280, ...zoneSize(3, 1),
+    deviceIds: ['active-directory', 'monitoring', 'backups'], cols: 3,
   },
-  devNode('admin-ep',      'zone-app', G22[0], gameDeviceData('admin_create_endpoint')),
-  devNode('ping-svc',      'zone-app', G22[1], gameDeviceData('ping_microservice')),
-  devNode('exchange',      'zone-app', G22[2], gameDeviceData('smtp_internal_relay')),
-  devNode('redis-session', 'zone-app', G22[3], gameDeviceData('redis_session_store')),
-
-  // ╔══════════════════════════════╗
-  // ║  ZONE: INTERNAL TOOLS        ║ 295×270
-  // ╚══════════════════════════════╝
-  {
-    id: 'zone-tools', type: 'zone',
-    position: { x: 50, y: 1110 },
-    style: { width: 295, height: 270 },
-    data: { label: 'Internal Tools', subnet: '10.0.2.0/24', color: '#00f0ff', bg: 'rgba(0,240,255,0.04)' },
-    draggable: true, selectable: false,
-  },
-  devNode('jenkins',    'zone-tools', G22[0], gameDeviceData('internal_jenkins')),
-  devNode('confluence', 'zone-tools', G22[1], gameDeviceData('internal_wiki')),
-  devNode('jira',       'zone-tools', G22[2], infraDeviceData('jira')),
-  devNode('grafana',    'zone-tools', G22[3], gameDeviceData('internal_monitoring')),
-
-  // ╔══════════════════════════════╗
-  // ║  FW-02 Internal              ║
-  // ╚══════════════════════════════╝
-  (() => {
-    const fw = deviceMap.get('fw-02')!;
-    return {
-      id: 'fw-02', type: 'firewall' as const,
-      position: { x: 809, y: 880 },
-      style: { width: 220, height: 160 },
-      data: { label: fw.label, rules: fw.rules ?? [] },
-      draggable: true, selectable: false,
-    };
-  })(),
-
-  // ╔══════════════════════════════╗
-  // ║  FW-03 / FW-04               ║
-  // ╚══════════════════════════════╝
-  (() => {
-    const fw = deviceMap.get('fw-03')!;
-    return {
-      id: 'fw-03', type: 'firewall' as const,
-      position: { x: 735, y: 1490 },
-      style: { width: 220, height: 160 },
-      data: { label: fw.label, rules: fw.rules ?? [] },
-      draggable: true, selectable: false,
-    };
-  })(),
-  (() => {
-    const fw = deviceMap.get('fw-04')!;
-    return {
-      id: 'fw-04', type: 'firewall' as const,
-      position: { x: 115, y: 1490 },
-      style: { width: 220, height: 160 },
-      data: { label: fw.label, rules: fw.rules ?? [] },
-      draggable: true, selectable: false,
-    };
-  })(),
-
-  // ╔══════════════════════════════╗
-  // ║  ZONE: DATABASE              ║ 420×160
-  // ╚══════════════════════════════╝
-  {
-    id: 'zone-db', type: 'zone',
-    position: { x: 620, y: 1740 },
-    style: { width: 420, height: 160 },
-    data: { label: 'Database Zone', subnet: '10.0.3.0/24', color: '#a855f7', bg: 'rgba(168,85,247,0.05)' },
-    draggable: true, selectable: false,
-  },
-  devNode('mssql',    'zone-db', G13[0], infraDeviceData('mssql')),
-  devNode('postgres', 'zone-db', G13[1], gameDeviceData('production_db_server')),
-  devNode('redis-db', 'zone-db', G13[2], infraDeviceData('redis-db')),
-
-  // ╔══════════════════════════════╗
-  // ║  ZONE: DEV / CLOUD           ║ 420×160
-  // ╚══════════════════════════════╝
-  {
-    id: 'zone-dev', type: 'zone',
-    position: { x: 50, y: 1740 },
-    style: { width: 420, height: 160 },
-    data: { label: 'Dev / Cloud', subnet: '10.0.4.0/24', color: '#00ff88', bg: 'rgba(0,255,136,0.04)' },
-    draggable: true, selectable: false,
-  },
-  devNode('docker',     'zone-dev', G13[0], infraDeviceData('docker')),
-  devNode('kubernetes', 'zone-dev', G13[1], infraDeviceData('kubernetes')),
-  devNode('aws',        'zone-dev', G13[2], gameDeviceData('cloud_metadata')),
 ];
 
-// ── Build EDGES from shared data ──────────────────────────────────────────────
+// ── Protection nodes (between zones) ─────────────────────────────────────────
+
+const PROTECTIONS: { id: string; x: number; y: number; w: number; h: number }[] = [
+  { id: 'cloudflare',  x: 400, y: 30,   w: 190, h: 120 },
+  { id: 'deploy-gw',   x: 120, y: 470,  w: 190, h: 130 },
+  { id: 'internal-fw', x: 700, y: 470,  w: 190, h: 130 },
+  { id: 'app-proxy',   x: 400, y: 700,  w: 190, h: 120 },
+  { id: 'pam-vault',   x: 420, y: 1070, w: 190, h: 120 },
+];
+
+// ── Build nodes ──────────────────────────────────────────────────────────────
+
+const NODES: Node[] = [];
+
+// Zone backgrounds + devices
+for (const zone of ZONES) {
+  NODES.push({
+    id: zone.id, type: 'zoneBackground',
+    position: { x: zone.x, y: zone.y },
+    style: { width: zone.width, height: zone.height, zIndex: -1 },
+    data: { label: zone.label, subtitle: zone.subtitle, color: zone.color, bg: bgColor(zone.color, 0.04) },
+    draggable: false, selectable: false,
+  });
+
+  zone.deviceIds.forEach((devId, i) => {
+    const dev = deviceMap.get(devId);
+    if (!dev) return;
+    NODES.push({
+      id: devId, type: 'device',
+      position: {
+        x: zone.x + PAD_X + (i % zone.cols) * CELL_W,
+        y: zone.y + PAD_Y + Math.floor(i / zone.cols) * CELL_H,
+      },
+      data: toDeviceData(dev),
+      draggable: true, selectable: false,
+    });
+  });
+}
+
+// Protection nodes
+for (const p of PROTECTIONS) {
+  const dev = deviceMap.get(p.id)!;
+  NODES.push({
+    id: p.id, type: 'protection',
+    position: { x: p.x, y: p.y },
+    style: { width: p.w, height: p.h },
+    data: { label: dev.label, rules: dev.rules ?? [] },
+    draggable: true, selectable: false,
+  });
+}
+
+// ── Build edges ──────────────────────────────────────────────────────────────
+
 const seg  = (color: string) => ({ type: 'smoothstep' as const, style: { stroke: color, strokeWidth: 2 } });
 const dash = (color: string) => ({ type: 'smoothstep' as const, animated: true, style: { stroke: color, strokeWidth: 1.5, strokeDasharray: '5 3' } });
-const atk  = () => ({ type: 'smoothstep' as const, animated: true, style: { stroke: '#ff3366', strokeWidth: 2, strokeDasharray: '4 3' } });
 
-/**
- * Map source/target IDs from networkEdges to ReactFlow node IDs.
- * Game node IDs (underscored) → visual IDs used in the layout above.
- * Zone-level targets map to zone container IDs.
- */
-const ID_TO_VISUAL: Record<string, string> = {};
-for (const [gameId, vis] of Object.entries(GAME_NODE_VIS)) {
-  ID_TO_VISUAL[gameId] = vis.visualId;
-}
-// networkDevice IDs are already used directly in the layout
-
-function resolveId(id: string): string {
-  return ID_TO_VISUAL[id] ?? id;
-}
-
-/** Determine edge style based on source/target */
 function edgeStyle(sourceId: string, targetId: string) {
-  // Firewall targets get dashed or attack style
-  const isFw = (id: string) => id.startsWith('fw-');
-  const srcDev = deviceMap.get(sourceId);
-  const tgtDev = deviceMap.get(targetId);
-
-  // Cloudflare → FW: solid orange
+  // Internet → Perimeter
   if (sourceId === 'cloudflare') return seg('#f97316');
-  // FW → targets: depends on direction
-  if (isFw(sourceId)) {
-    // FW-02 → internal app = attack path
-    if (sourceId === 'fw-02') return atk();
-    // FW-VPN → internal = dashed blue
-    if (sourceId === 'fw-vpn') return dash('#3b82f6');
-    // FW-01 → DMZ = solid amber
-    if (sourceId === 'fw-01') return seg('#f59e0b');
-    // FW-03 → DB = solid purple
-    if (sourceId === 'fw-03') return seg('#a855f7');
-    // FW-04 → Dev = solid green
-    if (sourceId === 'fw-04') return seg('#00ff88');
-    return seg('#00f0ff');
-  }
-  // → Firewall targets
-  if (isFw(targetId)) {
-    // Endpoints → VPN
-    if (srcDev?.zone === 'Endpoints') return seg('#3b82f6');
-    // DMZ → FW-02: dashed amber
-    if (targetId === 'fw-02') return dash('#f59e0b');
-    // Internal → FW: solid cyan
-    return seg('#00f0ff');
-  }
-  // Default
-  if (tgtDev?.zone === 'Database' || tgtDev?.zone === 'Dev / Cloud') return seg('#a855f7');
-  return seg('#00f0ff');
+
+  // Perimeter → Protection
+  if (sourceId === 'web-app' && targetId === 'deploy-gw') return dash('#fbbf24');
+  if (sourceId === 'web-app' && targetId === 'internal-fw') return dash('#3b82f6');
+
+  // Deploy GW ↔ Dev
+  if (sourceId === 'deploy-gw' && targetId === 'dev-portal') return seg('#fbbf24');
+  if (sourceId === 'dev-portal' && targetId === 'deploy-gw') return dash('#fbbf24');
+
+  // Internal FW → Corporate
+  if (sourceId === 'internal-fw') return seg('#3b82f6');
+
+  // App Gateway (cross-zone Dev ↔ Corporate)
+  if (sourceId === 'dev-portal' && targetId === 'app-proxy') return dash('#10b981');
+  if (sourceId === 'app-proxy') return seg('#10b981');
+
+  // PAM Vault
+  if (sourceId === 'pam-vault') return seg('#a855f7');
+  if (targetId === 'pam-vault') return dash('#a855f7');
+
+  return seg('#64748b');
 }
 
-const EDGES: Edge[] = networkEdges.map((e) => {
-  const source = resolveId(e.source);
-  const target = resolveId(e.target);
-  return { id: e.id, source, target, ...edgeStyle(e.source, e.target) };
-});
+// Handle overrides — space out connections that share a side
+function edgeHandles(sourceId: string, targetId: string): { sourceHandle?: string; targetHandle?: string } {
+  // web-app bottom: 2 outgoing — deploy-gw (left), internal-fw (right)
+  if (sourceId === 'web-app' && targetId === 'deploy-gw')  return { sourceHandle: 'bottom-l' };
+  if (sourceId === 'web-app' && targetId === 'internal-fw') return { sourceHandle: 'bottom-r' };
 
-// ── Main component ────────────────────────────────────────────────────────────
+  // deploy-gw ↔ dev-portal: 2 connections on deploy-gw bottom / dev-portal top
+  if (sourceId === 'deploy-gw'  && targetId === 'dev-portal') return { sourceHandle: 'bottom-l', targetHandle: 'top-l' };
+  if (sourceId === 'dev-portal' && targetId === 'deploy-gw')  return { sourceHandle: 'top-s',    targetHandle: 'bottom-tr' };
+
+  // dev-portal → app-proxy: horizontal right→left
+  if (sourceId === 'dev-portal' && targetId === 'app-proxy') return { sourceHandle: 'right-s', targetHandle: 'left-t' };
+
+  // app-proxy → corp-portal: horizontal right→left
+  if (sourceId === 'app-proxy' && targetId === 'corp-portal') return { sourceHandle: 'right-s', targetHandle: 'left-t' };
+
+  // pam-vault top: 2 incoming — dev-portal (left), corp-portal (right)
+  if (sourceId === 'dev-portal'  && targetId === 'pam-vault') return { targetHandle: 'top-l' };
+  if (sourceId === 'corp-portal' && targetId === 'pam-vault') return { targetHandle: 'top-r' };
+
+  // pam-vault bottom: 3 outgoing — AD (left), monitoring (center), backups (right)
+  if (sourceId === 'pam-vault' && targetId === 'active-directory') return { sourceHandle: 'bottom-l' };
+  if (sourceId === 'pam-vault' && targetId === 'monitoring')       return { sourceHandle: 'bottom-c' };
+  if (sourceId === 'pam-vault' && targetId === 'backups')          return { sourceHandle: 'bottom-r' };
+
+  return {};
+}
+
+const EDGES: Edge[] = networkEdges.map((e) => ({
+  id: e.id,
+  source: e.source,
+  target: e.target,
+  ...edgeStyle(e.source, e.target),
+  ...edgeHandles(e.source, e.target),
+}));
+
+// ── Main component ───────────────────────────────────────────────────────────
+
 export default function NetworkMap() {
   return (
     <div style={{ position: 'absolute', inset: 0, background: '#0a0e17' }}>
@@ -521,11 +392,11 @@ export default function NetworkMap() {
         <MiniMap
           style={{ background: 'rgba(10,14,23,0.9)', border: '1px solid #2a3a5c', borderRadius: 8 }}
           nodeColor={(node) => {
-            if (node.type === 'firewall') return '#ff336644';
-            if (node.type === 'zone') return ((node.data as Record<string, unknown>).color as string) + '33';
+            if (node.type === 'protection') return '#ff336644';
+            if (node.type === 'zoneBackground') return ((node.data as Record<string, unknown>).color as string) + '33';
             if (node.type === 'device') {
               const d = node.data as Record<string, unknown>;
-              return d.isTarget ? '#ff3366' : d.color as string;
+              return d.hasCVE ? CVE_COLOR : (d.color as string);
             }
             return '#1e293b';
           }}
