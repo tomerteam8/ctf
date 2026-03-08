@@ -40,6 +40,7 @@ function Icon({ type, color, size = 22 }: { type: string; color: string; size?: 
     case 'directory': return <svg {...s}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
     case 'grafana':   return <svg {...s}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>;
     case 'backup':    return <svg {...s}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+    case 'heartbeat': return <svg {...s}><polyline points="2,12 6,12 8,8 10,16 12,12 14,12"/><circle cx="18" cy="12" r="4"/><path d="m17 12 1 1 2-2"/></svg>;
     default:          return <svg {...s}><rect x="3" y="3" width="18" height="18" rx="2"/></svg>;
   }
 }
@@ -163,9 +164,10 @@ function ProtectionNode({ data }: NodeProps) {
       {/* Offset handles for spaced connections */}
       <Handle type="target" position={Position.Top}    id="top-l"      style={{ ...H, left: '38%' }} />
       <Handle type="target" position={Position.Top}    id="top-r"      style={{ ...H, left: '62%' }} />
-      <Handle type="source" position={Position.Bottom} id="bottom-l"   style={{ ...H, left: '28%' }} />
-      <Handle type="source" position={Position.Bottom} id="bottom-c"   style={{ ...H, left: '50%' }} />
-      <Handle type="source" position={Position.Bottom} id="bottom-r"   style={{ ...H, left: '72%' }} />
+      <Handle type="source" position={Position.Bottom} id="bottom-1"   style={{ ...H, left: '20%' }} />
+      <Handle type="source" position={Position.Bottom} id="bottom-2"   style={{ ...H, left: '40%' }} />
+      <Handle type="source" position={Position.Bottom} id="bottom-3"   style={{ ...H, left: '60%' }} />
+      <Handle type="source" position={Position.Bottom} id="bottom-4"   style={{ ...H, left: '80%' }} />
       <Handle type="target" position={Position.Bottom} id="bottom-tl"  style={{ ...H, left: '38%' }} />
       <Handle type="target" position={Position.Bottom} id="bottom-tr"  style={{ ...H, left: '62%' }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -242,8 +244,8 @@ const ZONES: ZoneDef[] = [
   },
   {
     id: 'zone-management', label: 'Management', subtitle: 'mgmt.target.com  ·  10.30.1.0/24',
-    color: '#a855f7', x: 260, y: 1280, ...zoneSize(3, 1),
-    deviceIds: ['active-directory', 'monitoring', 'backups'], cols: 3,
+    color: '#a855f7', x: 185, y: 1280, ...zoneSize(4, 1),
+    deviceIds: ['active-directory', 'monitoring', 'backups', 'microservice-check'], cols: 4,
   },
 ];
 
@@ -349,10 +351,11 @@ function edgeHandles(sourceId: string, targetId: string): { sourceHandle?: strin
   if (sourceId === 'dev-portal'  && targetId === 'pam-vault') return { targetHandle: 'top-l' };
   if (sourceId === 'corp-portal' && targetId === 'pam-vault') return { targetHandle: 'top-r' };
 
-  // pam-vault bottom: 3 outgoing — AD (left), monitoring (center), backups (right)
-  if (sourceId === 'pam-vault' && targetId === 'active-directory') return { sourceHandle: 'bottom-l' };
-  if (sourceId === 'pam-vault' && targetId === 'monitoring')       return { sourceHandle: 'bottom-c' };
-  if (sourceId === 'pam-vault' && targetId === 'backups')          return { sourceHandle: 'bottom-r' };
+  // pam-vault bottom: 4 outgoing — AD, monitoring, backups, microservice-check (left→right)
+  if (sourceId === 'pam-vault' && targetId === 'active-directory')  return { sourceHandle: 'bottom-1' };
+  if (sourceId === 'pam-vault' && targetId === 'monitoring')        return { sourceHandle: 'bottom-2' };
+  if (sourceId === 'pam-vault' && targetId === 'backups')           return { sourceHandle: 'bottom-3' };
+  if (sourceId === 'pam-vault' && targetId === 'microservice-check') return { sourceHandle: 'bottom-4' };
 
   return {};
 }
