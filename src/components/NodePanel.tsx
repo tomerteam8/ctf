@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useGameStore, PROMPT_LIMITS } from '../store/gameStore';
+import { useGameStore } from '../store/gameStore';
 import ActionCard from './ActionCard';
 import type { InfoSeverity } from '../data/types';
 
@@ -42,13 +42,7 @@ export default function NodePanel() {
   const setPendingPromptText = useGameStore((s) => s.setPendingPromptText);
   const difficulty = useGameStore((s) => s.difficulty);
   const nodeFailures = useGameStore((s) => s.nodeFailures);
-  const nodePromptsRemaining = useGameStore((s) => s.nodePromptsRemaining);
   const node = selectedNodeId ? nodes.get(selectedNodeId) : null;
-
-  const promptsRemaining = selectedNodeId
-    ? (nodePromptsRemaining[selectedNodeId] ?? PROMPT_LIMITS[difficulty])
-    : 0;
-  const promptsExhausted = promptsRemaining <= 0;
 
   const [input, setInput] = useState('');
   const [showServiceInfo, setShowServiceInfo] = useState(false);
@@ -96,7 +90,7 @@ export default function NodePanel() {
   };
 
   const handleHintClick = (text: string) => {
-    if (!selectedNodeId || executingAction || promptsExhausted) return;
+    if (!selectedNodeId || executingAction) return;
     setInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
     inputRef.current?.focus();
   };
@@ -313,26 +307,14 @@ export default function NodePanel() {
             borderTop: '1px solid #2a3a5c',
             background: 'rgba(10,14,23,0.8)',
           }}>
-            <div style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              marginBottom: 6, fontSize: 11, fontFamily: 'monospace',
-            }}>
-              <span style={{
-                color: promptsExhausted ? '#ff3366' : promptsRemaining <= 2 ? '#ffc107' : '#94a3b8',
-              }}>
-                {promptsExhausted
-                  ? 'No prompts remaining'
-                  : `${promptsRemaining} / ${PROMPT_LIMITS[difficulty]} prompts remaining`}
-              </span>
-            </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <input
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder={promptsExhausted ? 'No prompts remaining' : executingAction ? 'Executing...' : 'What do you want to try?'}
-                disabled={executingAction || promptsExhausted}
+                placeholder={executingAction ? 'Executing...' : 'What do you want to try?'}
+                disabled={executingAction}
                 style={{
                   flex: 1,
                   padding: '10px 14px',
@@ -343,21 +325,20 @@ export default function NodePanel() {
                   fontSize: 13,
                   fontFamily: 'monospace',
                   outline: 'none',
-                  opacity: promptsExhausted ? 0.5 : 1,
                 }}
               />
               <button
                 onClick={handleSend}
-                disabled={executingAction || promptsExhausted || !input.trim()}
+                disabled={executingAction || !input.trim()}
                 style={{
                   padding: '10px 16px',
                   borderRadius: 8,
                   border: '1px solid rgba(0,240,255,0.3)',
-                  background: executingAction || promptsExhausted || !input.trim() ? 'rgba(17,24,39,0.8)' : 'rgba(0,240,255,0.15)',
-                  color: executingAction || promptsExhausted || !input.trim() ? '#94a3b8' : '#00f0ff',
+                  background: executingAction || !input.trim() ? 'rgba(17,24,39,0.8)' : 'rgba(0,240,255,0.15)',
+                  color: executingAction || !input.trim() ? '#94a3b8' : '#00f0ff',
                   fontWeight: 700,
                   fontSize: 12,
-                  cursor: executingAction || promptsExhausted || !input.trim() ? 'not-allowed' : 'pointer',
+                  cursor: executingAction || !input.trim() ? 'not-allowed' : 'pointer',
                 }}
               >
                 {executingAction ? '...' : '▶'}

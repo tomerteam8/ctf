@@ -22,7 +22,7 @@ function getTakeoverDescription(capturedFlags: string[]): string {
     : usedSE
       ? 'social engineering a support agent to escalate privileges'
       : 'SQL injection privilege escalation';
-  return `You chained account registration, ${escalationMethod}, SSRF via the supplier catalog import tool to create a rogue admin account, and command injection on the ping diagnostic service to spawn a reverse shell. You now have full remote code execution on the management server — complete takeover achieved. Congratulations!`;
+  return `You chained account registration, ${escalationMethod}, SSRF via the supplier catalog import tool to create a rogue admin account, and CVE-2024-22116 on the Zabbix Ping script to achieve remote code execution on the management server — complete takeover achieved. Congratulations!`;
 }
 
 export default function FlagModal() {
