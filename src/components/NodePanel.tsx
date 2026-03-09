@@ -41,7 +41,6 @@ export default function NodePanel() {
   const pendingPromptText = useGameStore((s) => s.pendingPromptText);
   const setPendingPromptText = useGameStore((s) => s.setPendingPromptText);
   const difficulty = useGameStore((s) => s.difficulty);
-  const nodeFailures = useGameStore((s) => s.nodeFailures);
   const completedActions = useGameStore((s) => s.completedActions);
   const node = selectedNodeId ? nodes.get(selectedNodeId) : null;
 
@@ -237,7 +236,7 @@ export default function NodePanel() {
             {(() => {
               const showHints =
                 difficulty === 'easy' ||
-                (difficulty === 'normal' && (nodeFailures[node.id] || 0) >= 3);
+                difficulty === 'normal';
               // hard → never show
               return showHints ? (
                 <div style={{ marginBottom: 16 }}>
@@ -256,6 +255,7 @@ export default function NodePanel() {
                           key={action.id}
                           action={action}
                           onClickHint={handleHintClick}
+                          difficulty={difficulty}
                         />
                       ))}
                   </div>

@@ -22,6 +22,7 @@ export interface Action {
   category: ActionCategory;
   showAsHint?: boolean;
   hint?: string;
+  easyHint?: string;
 }
 
 export type InfoSeverity = 'critical' | 'high' | 'medium' | 'info';
