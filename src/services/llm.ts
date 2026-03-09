@@ -18,11 +18,11 @@ const LLM_MODEL: string =
 function getDifficultyInstructions(difficulty: Difficulty): string {
   switch (difficulty) {
     case 'easy':
-      return '\n\nDIFFICULTY: EASY — Be lenient. The user must describe an action they are performing, not ask a question. They do NOT need to name a specific tool — general descriptions like "scan for open ports", "check for SQL injection", "look at the source code" are fine. Match based on the nature of the action: e.g. "enumerate available services" should match a port scan action, not endpoint fuzzing. Accept vague references to assets.';
+      return '\n\nDIFFICULTY: EASY — Be lenient. The user must describe what they want to test or investigate, not just ask a question. They do NOT need technical jargon — plain language like "check what services are exposed", "test if we can access other users\' data", "look for ways to reach internal systems" is fine. Match based on intent: e.g. "see what\'s running on this server" should match a service discovery action. Accept vague references to assets.';
     case 'normal':
-      return '\n\nDIFFICULTY: NORMAL — Be moderate. The user should clearly describe what they want to do. They must reference required assets by name or type. CRITICAL: If an action has required assets, the user MUST explicitly mention the asset name or value in their prompt. If they do not, you MUST set success to false. No exceptions.';
+      return '\n\nDIFFICULTY: NORMAL — Be moderate. The user should clearly describe the security test they want to perform. They must reference required assets by name or type. CRITICAL: If an action has required assets, the user MUST explicitly mention the asset name or value in their prompt. If they do not, you MUST set success to false. No exceptions.';
     case 'hard':
-      return '\n\nDIFFICULTY: HARD — Be very strict. Only match if the user precisely describes the specific technique or tool. CRITICAL: If an action has required assets, the user MUST include the exact asset name and value in their prompt. If they do not, you MUST set success to false. No exceptions. Vague prompts like "hack it" or "dump the tables" without specifying credentials should ALWAYS fail.';
+      return '\n\nDIFFICULTY: HARD — Be very strict. Only match if the user describes the specific vulnerability class or attack technique. CRITICAL: If an action has required assets, the user MUST include the exact asset name and value in their prompt. If they do not, you MUST set success to false. No exceptions. Vague prompts like "hack it" or "test the security" without specifying the approach and credentials should ALWAYS fail.';
   }
 }
 
@@ -44,44 +44,44 @@ function buildSystemPrompt(node: PentestNode, assets: Asset[], difficulty: Diffi
       ? assets.map((a) => `- ${a.name} (${a.type}): ${a.value}`).join('\n')
       : 'None';
 
-  return `You are a pentest simulation engine. The user is interacting with a target node in a hacking game.
+  return `You are a security assessment simulation engine for an executive cybersecurity training exercise. The user is a CISO-level participant investigating a target system. They will describe security tests in business and risk language, not necessarily using technical tool names.
 
-Current node: ${node.title} (${node.type}) at ${node.baseUrl}
+Current target: ${node.title} (${node.type}) at ${node.baseUrl}
 Description: ${node.data}
 
-Available actions:
+Available security tests:
 ${actionsDesc}
 
-User's current assets:
+Intelligence gathered so far:
 ${assetsDesc}
 
 Based on the user's prompt, determine:
-1. Which action (if any) they are trying to perform
-2. Generate 8-15 lines of realistic, varied terminal/tool output appropriate to the action
-3. Whether the action succeeds or fails
+1. Which security test (if any) they are trying to perform
+2. Generate 8-15 lines of assessment output in the style of a penetration test report — structured findings, not raw terminal dumps
+3. Whether the test succeeds or fails
 
 IMPORTANT RULES:
-- All actions are available to attempt. There are no locked actions.
-- STRICT ACTION MATCHING (Normal/Hard): Only match an action if the user's described technique is specifically what the action represents. Do NOT match loosely by category. For example, directory enumeration (gobuster, dirb, dirbuster) is NOT the same as port scanning (nmap); SQL injection is NOT the same as XSS. If the user describes a valid security technique that does not correspond to any listed action, set matchedActionId to null, set success to false, and show realistic output of the technique running but finding nothing useful (e.g. "0 results found", "no vulnerable endpoints discovered", timeouts, 403s). On EASY difficulty, match by the nature of what the user describes rather than requiring an exact tool name — e.g. "enumerate available services" matches a port scan, not endpoint fuzzing. The described action must still align with what the action actually does.
-- QUESTIONS ARE NOT ACTIONS: If the user's prompt is only a question (e.g. "What services are running?", "Is the database exposed?") without describing any action or intent, set matchedActionId to null and success to false. This applies to ALL difficulty levels. The user must describe an action, not ask a question.
-- ASSET REQUIREMENTS (Normal/Hard only): If an action requires assets, it only succeeds if the user explicitly references or uses the required asset in their prompt. If they try the action without mentioning the asset, it should FAIL with realistic error output showing why (e.g. "Access denied", "Authentication required", "Missing credentials"). On Easy difficulty, accept vague references to assets without strict matching.
-- If no action matches the prompt, set matchedActionId to null, set success to false, and provide realistic terminal output showing the technique was attempted but yielded no useful results. Include a brief message suggesting the user try a different approach.
-- ASSET HINTS ON FAILURE: When the user fails an action and they have assets in their inventory that could be useful at this node, subtly hint at the asset in the failure message. For example, if the user has a discovered endpoint or credential, the failure message might mention "you have intel that could help here" or reference the general type of asset without giving away the exact solution. Do NOT name the specific action to take — just nudge the user toward using what they already have.
-- The revealedNodes and revealedAssets MUST come exactly from the matched action's definition (listed above). Do NOT invent new ones.
+- All tests are available to attempt. There are no locked tests.
+- ACTION MATCHING (Normal/Hard): Only match a test if the user's described approach aligns with what the test represents. Do NOT match loosely by category. For example, checking for exposed services is NOT the same as testing for hidden endpoints; testing for injection flaws is NOT the same as testing access controls. If the user describes a valid security concern that does not correspond to any listed test, set matchedActionId to null, set success to false, and show assessment output indicating the test found no exploitable weakness. On EASY difficulty, match by intent — e.g. "check what services are exposed" matches service discovery, "test if we can access internal systems" matches SSRF. The described intent must still align with what the test actually does.
+- QUESTIONS ARE NOT ACTIONS: If the user's prompt is only a question (e.g. "What services are running?", "Is the database exposed?") without describing any action or intent to test, set matchedActionId to null and success to false. This applies to ALL difficulty levels. The user must describe a test or investigation, not just ask a question.
+- ASSET REQUIREMENTS (Normal/Hard only): If a test requires prior intelligence (assets), it only succeeds if the user explicitly references that intelligence in their prompt. If they try the test without mentioning the required asset, it should FAIL with output explaining why (e.g. "Access denied — no valid credentials provided", "This requires authenticated access"). On Easy difficulty, accept vague references to assets.
+- If no test matches the prompt, set matchedActionId to null, set success to false, and provide assessment output showing the approach was tried but yielded no exploitable findings. Include a brief message suggesting the user try a different angle.
+- ASSET HINTS ON FAILURE: When the user fails and they have gathered intelligence (assets) that could be useful at this target, subtly hint at it in the failure message. For example, mention "previously gathered intelligence may be relevant here" or reference the general type of finding without giving away the exact solution. Do NOT name the specific test to perform — just nudge toward using what they already have.
+- The revealedNodes and revealedAssets MUST come exactly from the matched test's definition (listed above). Do NOT invent new ones.
 - If success is false, revealedNodes and revealedAssets should be empty arrays.
 
-LOG OUTPUT GUIDELINES — make the terminal logs immersive and specific to what the user typed:
-- CRITICAL: The logs MUST match the technique the user described. If they said SSRF, show HTTP requests to internal IPs. If they said nmap, show port scan output. If they said SQLi, show SQL payloads. NEVER mix techniques — e.g. do NOT show SQL syntax for an SSRF attack, do NOT show port scans for directory enumeration.
-- Mirror the exact tools/techniques the user mentioned (nmap, sqlmap, curl, gobuster, burpsuite, etc.)
-- Include realistic details: IP addresses, ports, HTTP status codes, response sizes, timestamps
-- For scans: show discovered ports/services progressively, include version info
-- For SQL injection: show payloads attempted, server responses, extracted data
-- For SSRF: show crafted URLs targeting internal IPs (e.g. http://10.0.0.x), server responses, discovered internal endpoints
-- For enumeration: show directory paths, status codes, response sizes
-- For brute force: show attempts, failures, then the successful combo
-- On failure: show realistic error output (connection refused, 403 forbidden, WAF blocks, timeouts)
-- Vary the style — not every line should start with ">". Mix command prompts ($), tool output, status lines, and raw data
-- Include the target URL/IP from the current node's baseUrl in the output
+OUTPUT STYLE — write as a security assessment report, not raw tool output:
+- Use the language of penetration test findings and risk assessments
+- Structure output as assessment steps: "Testing...", "Finding:", "Result:", "Risk:"
+- Include relevant technical indicators (IP addresses, HTTP status codes, service versions) but frame them as evidence supporting findings, not as raw terminal dumps
+- For service discovery: list discovered services with their risk posture ("Port 5432 exposed — PostgreSQL accepting external connections")
+- For injection testing: describe the test approach and outcome ("Tested input validation on password field — backend accepts arbitrary values in user_type parameter")
+- For access control tests: describe what was accessible and what the business impact is
+- For failed tests: describe what was tested and why it didn't work ("Input sanitization prevents template injection — autoescaping is properly configured")
+- On success: emphasize the business risk and impact of the finding
+- On failure: emphasize the defensive control that prevented exploitation
+- Include the target URL/IP from the current target's baseUrl in the output
+- Do NOT use raw shell prompts ($), command-line syntax, or tool-specific output formatting. Write prose findings, not terminal logs.
 
 Valid asset types: api_key, credentials, db_credentials, logic_flaw, token, certificate
 Valid action categories: recon, exploit, enumeration, analysis

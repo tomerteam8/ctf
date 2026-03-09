@@ -3,692 +3,292 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
 
 // Contextual loading lines based on keywords in the user's prompt.
-// Two tiers:
-//   1. Specific tool names → realistic tool output ($ commands), parameterized per node
-//   2. Technique/concept keywords → descriptive `>` prefixed lines
-// Both `$` and `>` render cyan. Ordered most-specific first; first match wins.
+// Written as security assessment steps — no raw terminal/tool output.
+// Ordered most-specific first; first match wins.
 function buildFallbackLines(prompt: string, nodeTitle: string, baseUrl: string): string[] {
   const p = prompt.toLowerCase();
   const host = baseUrl.replace(/^https?:\/\//, '').replace(/\/.*$/, '') || 'shop.target.com';
-  const path = baseUrl.replace(/^https?:\/\/[^/]+/, '') || '/';
 
-  // =====================================================================
-  // TIER 1 — Specific tool names → realistic tool output
-  // =====================================================================
-
-  // ── nmap / masscan / rustscan ─────────────────────────────────────────
-  if (p.includes('nmap')) {
+  // ── Service / network discovery ─────────────────────────────────────
+  if (p.includes('scan') || p.includes('service') || p.includes('port') || p.includes('exposed') || p.includes('running') || p.includes('open port') || p.includes('nmap')) {
     return [
-      `$ nmap -sC -sV ${host}`,
-      `Starting Nmap 7.94SVN ( https://nmap.org )`,
-      `Nmap scan report for ${host}`,
-      '> Discovering open ports...',
-      '> Running service detection scripts...',
-      `> NSE: Running scripts against ${nodeTitle}...`,
-      '> Compiling scan results...',
-    ];
-  }
-  if (p.includes('masscan')) {
-    return [
-      `$ masscan ${host} -p0-65535 --rate=10000`,
-      `Starting masscan 1.3.2 at ${new Date().toISOString().slice(0, 19)}`,
-      `> Scanning ${host} at 10000 packets/sec...`,
-      '> Discovered open ports...',
-      '> Scan complete, processing results...',
-    ];
-  }
-  if (p.includes('rustscan')) {
-    return [
-      `$ rustscan -a ${host} -- -sV`,
-      '> Open ports: 21, 80, 443, 6379',
-      `> Handing off to nmap for service detection on ${host}...`,
-      '> Running version probes...',
-      '> Compiling results...',
+      `> Initiating service discovery against ${host}...`,
+      '> Probing for exposed network services...',
+      '> Identifying service versions and configurations...',
+      '> Checking for unnecessary exposed ports...',
+      '> Assessing external attack surface...',
+      '> Compiling service inventory...',
     ];
   }
 
-  // ── gobuster / ffuf / dirb / dirsearch / feroxbuster ──────────────────
-  if (p.includes('gobuster')) {
+  // ── Hidden endpoints / undocumented pages ────────────────────────────
+  if (p.includes('hidden') || p.includes('undocumented') || p.includes('discover') || p.includes('endpoint') || p.includes('path') || p.includes('directory') || p.includes('api') || p.includes('legacy') || p.includes('deprecated') || p.includes('wordlist')) {
     return [
-      `$ gobuster dir -u ${baseUrl} -w /usr/share/seclists/Discovery/Web-Content/raft-medium.txt -t 50`,
-      'Gobuster v3.6',
-      `> Brute-forcing directories on ${host}...`,
-      '> Sending requests... [==========>          ] 47%',
-      '> Filtering by status code...',
-      '> Sending requests... [===================> ] 94%',
-      '> Compiling discovered endpoints...',
-    ];
-  }
-  if (p.includes('ffuf')) {
-    return [
-      `$ ffuf -u ${baseUrl}/FUZZ -w common.txt -mc 200,301,401,403`,
-      `> FUZZ wordlist: common.txt (4727 entries)`,
-      `> Targeting ${host}...`,
-      '> Filtering responses...',
-      '> Progress: [4727/4727] — Elapsed: [00:00:08]',
-    ];
-  }
-  if (p.includes('dirb')) {
-    return [
-      `$ dirb ${baseUrl} /usr/share/wordlists/dirb/common.txt`,
-      `DIRB v2.22`,
-      `> Scanning ${baseUrl}...`,
-      '> Testing entries... [==========>          ] 47%',
-      '> Compiling discovered paths...',
-    ];
-  }
-  if (p.includes('dirsearch')) {
-    return [
-      `$ dirsearch -u ${baseUrl} -e php,js,html`,
-      `> Target: ${baseUrl}`,
-      '> Wordlist size: 9847',
-      '> Scanning... [===================> ] 94%',
-      '> Compiling results...',
-    ];
-  }
-  if (p.includes('feroxbuster')) {
-    return [
-      `$ feroxbuster -u ${baseUrl} -w raft-medium.txt`,
-      `> Target: ${baseUrl}`,
-      '> Threads: 50 | Wordlist: raft-medium.txt',
-      '> Scanning recursively...',
-      '> Processing discovered paths...',
+      `> Probing ${nodeTitle} for undocumented endpoints...`,
+      '> Testing common administrative and debug paths...',
+      '> Checking for legacy or deprecated API versions...',
+      '> Analyzing server responses for hidden functionality...',
+      '> Cross-referencing discovered paths...',
+      '> Compiling endpoint inventory...',
     ];
   }
 
-  // ── sqlmap ────────────────────────────────────────────────────────────
-  if (p.includes('sqlmap')) {
+  // ── Injection / input validation ────────────────────────────────────
+  if (p.includes('inject') || p.includes('sql') || p.includes('input') || p.includes('sanitiz') || p.includes('validat') || p.includes('user_type') || p.includes('parameter') || p.includes('field') || p.includes('form')) {
     return [
-      `$ sqlmap -u "${baseUrl}" --data="user_type=test" --batch --level=3`,
-      `        ___`,
-      `       __H__`,
-      ` ___ ___[']_____ ___ ___  {1.8.12#stable}`,
-      `|_ -| . ["]     | .'| . |`,
-      `|___|_  [']_|_|_|__,|  _|`,
-      `      |_|V...       |_|`,
-      `> Testing connection to ${host}...`,
-      `> Testing parameters on ${nodeTitle}...`,
-      '> Checking if target is protected by WAF/IPS...',
-      '> Heuristic test shows parameter might be injectable...',
+      `> Testing input handling on ${nodeTitle}...`,
+      '> Submitting test payloads to input fields...',
+      '> Analyzing how the backend processes unexpected input...',
+      '> Checking for proper input sanitization...',
+      '> Evaluating error responses for information leakage...',
+      '> Assessing injection risk...',
     ];
   }
 
-  // ── curl ──────────────────────────────────────────────────────────────
-  if (p.includes('curl')) {
+  // ── Access control / authorization ──────────────────────────────────
+  if (p.includes('access') || p.includes('authoriz') || p.includes('other user') || p.includes('someone else') || p.includes('boundary') || p.includes('customer') || p.includes('permission')) {
     return [
-      `$ curl -s -v ${baseUrl}`,
-      `> GET ${path} HTTP/2`,
-      `> Host: ${host}`,
-      '> User-Agent: Mozilla/5.0',
-      `< HTTP/2 200`,
-      '< content-type: application/json',
-      `> Parsing response from ${nodeTitle}...`,
+      `> Testing access controls on ${nodeTitle}...`,
+      '> Checking authorization boundaries between users...',
+      '> Attempting to access resources outside current scope...',
+      '> Evaluating role-based access enforcement...',
+      '> Analyzing response differences across privilege levels...',
+      '> Assessing access control posture...',
     ];
   }
 
-  // ── hydra ─────────────────────────────────────────────────────────────
-  if (p.includes('hydra')) {
+  // ── Privilege escalation / role change ──────────────────────────────
+  if (p.includes('escalat') || p.includes('privilege') || p.includes('role') || p.includes('employee') || p.includes('admin') || p.includes('upgrade') || p.includes('elevat')) {
     return [
-      `$ hydra -L users.txt -P rockyou.txt ${host} https-post-form "${path}:email=^USER^&pass=^PASS^:Invalid"`,
-      'Hydra v9.5 (c) 2023 by van Hauser/THC',
-      `> Attacking ${host}...`,
-      '[DATA] max 16 tasks per 1 server',
-      '> Attempt 2847 / 14344321 — ~896 tries/min...',
-      '> Analyzing responses for valid sessions...',
-    ];
-  }
-  if (p.includes('medusa')) {
-    return [
-      `$ medusa -h ${host} -U users.txt -P passwords.txt -M http`,
-      `Medusa v2.2`,
-      `> Targeting ${nodeTitle}...`,
-      '> Testing credential combinations (16 threads)...',
-      '> Monitoring for account lockout...',
+      '> Assessing current privilege level...',
+      '> Testing for privilege escalation vectors...',
+      '> Attempting to modify account role parameters...',
+      `> Sending modified request to ${nodeTitle}...`,
+      '> Evaluating backend role enforcement...',
+      '> Analyzing response for access changes...',
     ];
   }
 
-  // ── nikto ─────────────────────────────────────────────────────────────
-  if (p.includes('nikto')) {
+  // ── Social engineering / support ────────────────────────────────────
+  if (p.includes('social') || p.includes('convince') || p.includes('pretend') || p.includes('support') || p.includes('agent') || p.includes('help desk') || p.includes('chat') || p.includes('trick') || p.includes('phish') || p.includes('pose as')) {
     return [
-      `$ nikto -h ${baseUrl}`,
-      `- Nikto v2.5.0`,
-      `+ Target Hostname: ${host}`,
-      `+ Server: nginx/1.24.0`,
-      '+ X-Powered-By: Express',
-      `> Testing ${nodeTitle} for known vulnerabilities...`,
-      '> Compiling vulnerability report...',
+      '> Initiating support interaction...',
+      '> Establishing rapport with agent...',
+      '> Presenting pretext scenario...',
+      '> Assessing agent verification procedures...',
+      '> Testing social engineering resistance...',
+      '> Evaluating response to privilege request...',
     ];
   }
 
-  // ── nuclei ────────────────────────────────────────────────────────────
-  if (p.includes('nuclei')) {
+  // ── Credential / authentication testing ─────────────────────────────
+  if (p.includes('password') || p.includes('credential') || p.includes('default') || p.includes('login') || p.includes('authenticat') || p.includes('brute') || p.includes('guess')) {
     return [
-      `$ nuclei -u ${baseUrl} -t cves/ -t exposures/`,
-      `[INF] nuclei v3.1.0`,
-      `[INF] Templates loaded: 7482`,
-      `> Scanning ${nodeTitle}...`,
-      '> Checking CVE templates against target...',
-      '> Processing template matches...',
+      `> Testing authentication on ${nodeTitle}...`,
+      '> Checking for default or weak credentials...',
+      '> Evaluating password policy enforcement...',
+      '> Testing account lockout mechanisms...',
+      '> Assessing authentication security posture...',
     ];
   }
 
-  // ── whatweb / wappalyzer ──────────────────────────────────────────────
-  if (p.includes('whatweb')) {
+  // ── Internal network / SSRF ─────────────────────────────────────────
+  if (p.includes('internal') || p.includes('ssrf') || p.includes('localhost') || p.includes('127.0.0') || p.includes('10.') || p.includes('192.168') || p.includes('reach') || p.includes('probe') || p.includes('network')) {
     return [
-      `$ whatweb -a 3 ${baseUrl}`,
-      `${baseUrl} [200 OK]`,
-      `  HTTPServer[nginx/1.24.0], X-Powered-By[Express]`,
-      `> Fingerprinting ${nodeTitle}...`,
-      '> Cross-referencing versions with vulnerability databases...',
-    ];
-  }
-  if (p.includes('wappalyzer')) {
-    return [
-      `$ wappalyzer ${baseUrl}`,
-      `> Analyzing ${nodeTitle}...`,
-      '> Detected: nginx, Express.js, Node.js, React',
-      '> Identifying library versions...',
-      '> Checking for known vulnerabilities...',
+      '> Testing for access to internal network resources...',
+      `> Probing server-side request handling on ${nodeTitle}...`,
+      '> Checking if the server can be directed to internal addresses...',
+      '> Evaluating URL validation and allow-list controls...',
+      '> Mapping accessible internal services...',
+      '> Assessing network segmentation effectiveness...',
     ];
   }
 
-  // ── hashcat / john ────────────────────────────────────────────────────
-  if (p.includes('hashcat')) {
+  // ── CVE / known vulnerability exploitation ──────────────────────────
+  if (p.includes('cve') || p.includes('exploit') || p.includes('vulnerability') || p.includes('vuln') || p.includes('known') || p.includes('patch') || p.includes('version')) {
     return [
-      '$ hashcat -m 16500 jwt.txt /usr/share/wordlists/rockyou.txt',
-      '> Loading hash file...',
-      '> Attack mode: dictionary',
-      '> Speed: 1.2 MH/s',
-      '> Testing candidate passwords...',
-      '> Analyzing results...',
-    ];
-  }
-  if (p.includes('john')) {
-    return [
-      '$ john --wordlist=rockyou.txt hash.txt',
-      'Loaded 1 password hash',
-      '> Running wordlist attack...',
-      '> Press any key for status...',
-      '> Analyzing cracked results...',
+      `> Identifying software version on ${nodeTitle}...`,
+      '> Cross-referencing against known vulnerability databases...',
+      '> Checking for applicable CVEs...',
+      '> Evaluating exploit prerequisites...',
+      '> Testing vulnerability conditions...',
+      '> Assessing exploitability and defensive mitigations...',
     ];
   }
 
-  // ── redis-cli ─────────────────────────────────────────────────────────
-  if (p.includes('redis-cli')) {
+  // ── Data exposure / exfiltration ────────────────────────────────────
+  if (p.includes('data') || p.includes('export') || p.includes('exfil') || p.includes('pii') || p.includes('customer') || p.includes('dump') || p.includes('extract') || p.includes('sensitive')) {
     return [
-      `$ redis-cli -h ${host} -p 6379`,
-      `${host}:6379> INFO server`,
-      '(error) NOAUTH Authentication required.',
-      '> Testing common passwords...',
-      '> Checking for protected mode bypass...',
+      `> Assessing data exposure on ${nodeTitle}...`,
+      '> Evaluating scope of accessible records...',
+      '> Checking for bulk data export capabilities...',
+      '> Testing access restrictions on sensitive data...',
+      '> Analyzing data classification and protection controls...',
+      '> Assessing business impact of data exposure...',
     ];
   }
 
-  // ── netcat / nc ───────────────────────────────────────────────────────
-  if (p.includes('netcat') || /\bnc\b/.test(p)) {
+  // ── Registration / account creation ─────────────────────────────────
+  if (p.includes('register') || p.includes('sign up') || p.includes('create account') || p.includes('new account')) {
     return [
-      `$ nc -nv ${host} 443`,
-      `Connection to ${host} port 443 [tcp] succeeded!`,
-      '> Sending raw request...',
-      `> Reading response from ${nodeTitle}...`,
-      '> Analyzing banner...',
+      '> Submitting account registration request...',
+      '> Testing registration with test credentials...',
+      '> Evaluating account creation controls...',
+      '> Checking for authenticated session...',
+      '> Verifying access to authenticated features...',
     ];
   }
 
-  // ── burp ──────────────────────────────────────────────────────────────
-  if (p.includes('burp')) {
+  // ── Token / session security ────────────────────────────────────────
+  if (p.includes('token') || p.includes('session') || p.includes('jwt') || p.includes('cookie') || p.includes('forge') || p.includes('tamper')) {
     return [
-      `> Burp Suite intercepting traffic to ${host}...`,
-      `> Captured request: ${path}`,
-      '> Sending to Repeater...',
-      '> Modifying parameters...',
-      `> Forwarding modified request to ${nodeTitle}...`,
-      '> Analyzing response diff...',
+      '> Analyzing session token structure...',
+      '> Evaluating token signing and integrity...',
+      '> Testing for token tampering vulnerabilities...',
+      '> Checking token expiration and rotation policies...',
+      '> Assessing session management security...',
     ];
   }
 
-  // ── amass / subfinder ─────────────────────────────────────────────────
-  if (p.includes('amass')) {
+  // ── File upload testing ─────────────────────────────────────────────
+  if (p.includes('upload') || p.includes('file') || p.includes('image') || p.includes('avatar') || p.includes('attachment')) {
     return [
-      `$ amass enum -d ${host}`,
-      '> Querying certificate transparency logs...',
-      '> Brute-forcing subdomains...',
-      `> Enumerating ${host}...`,
-      '> Compiling subdomain list...',
-    ];
-  }
-  if (p.includes('subfinder')) {
-    return [
-      `$ subfinder -d ${host} -silent`,
-      `> Querying passive sources for ${host}...`,
-      '> Sources: crtsh, virustotal, hackertarget...',
-      '> Compiling discovered subdomains...',
+      '> Testing file upload restrictions...',
+      '> Evaluating content type validation...',
+      '> Checking for server-side file processing...',
+      '> Testing upload with modified file headers...',
+      '> Assessing upload security controls...',
     ];
   }
 
-  // ── dig / nslookup ────────────────────────────────────────────────────
-  if (p.includes('dig')) {
+  // ── Price / payment / checkout manipulation ─────────────────────────
+  if (p.includes('price') || p.includes('payment') || p.includes('checkout') || p.includes('discount') || p.includes('coupon') || p.includes('refund') || p.includes('purchase') || p.includes('order') || p.includes('cart') || p.includes('cost')) {
     return [
-      `$ dig +short ${host}`,
-      '203.0.113.42',
-      `$ dig +short MX ${host}`,
-      `10 mail.${host}.`,
-      '> Compiling DNS records...',
-    ];
-  }
-  if (p.includes('nslookup')) {
-    return [
-      `$ nslookup ${host}`,
-      `Server: 8.8.8.8`,
-      `Address: 203.0.113.42`,
-      '> Resolving additional records...',
+      `> Testing pricing integrity on ${nodeTitle}...`,
+      '> Evaluating server-side price validation...',
+      '> Checking for discount and coupon abuse vectors...',
+      '> Testing transaction controls...',
+      '> Assessing financial impact potential...',
     ];
   }
 
-  // ── whois ─────────────────────────────────────────────────────────────
-  if (p.includes('whois')) {
+  // ── Email / notification manipulation ───────────────────────────────
+  if (p.includes('email') || p.includes('mail') || p.includes('unsubscribe') || p.includes('notification') || p.includes('marketing')) {
     return [
-      `$ whois ${host}`,
-      `Domain Name: ${host.toUpperCase()}`,
-      'Registrar: NameCheap, Inc.',
-      'Creation Date: 2019-03-14',
-      '> Gathering registrar information...',
+      `> Testing email functionality on ${nodeTitle}...`,
+      '> Evaluating input handling in email fields...',
+      '> Checking for notification delivery manipulation...',
+      '> Testing impact on other users\' preferences...',
+      '> Assessing business disruption potential...',
     ];
   }
 
-  // =====================================================================
-  // TIER 2 — Technique / concept keywords → descriptive lines
-  // =====================================================================
-
-  // ── SQL injection ─────────────────────────────────────────────────────
-  if (p.includes('sql') || p.includes('union select') || p.includes('column') || p.includes('user_type')) {
+  // ── Monitoring / diagnostic tools ───────────────────────────────────
+  if (p.includes('monitor') || p.includes('health') || p.includes('diagnostic') || p.includes('ping') || p.includes('status') || p.includes('zabbix') || p.includes('grafana')) {
     return [
-      `> Testing ${nodeTitle} for SQL injection vectors...`,
-      '> Sending error-based detection payload...',
-      '> Analyzing server error responses for DB fingerprint...',
-      '> Backend identified: PostgreSQL',
-      '> Testing UNION-based injection on target parameter...',
-      '> Adjusting payload column count...',
-      '> Extracting data from response...',
+      `> Accessing diagnostic tools on ${nodeTitle}...`,
+      '> Evaluating available monitoring capabilities...',
+      '> Testing diagnostic input handling...',
+      '> Checking for command execution vectors...',
+      '> Assessing management interface security...',
     ];
   }
 
-  // ── Directory / path enumeration ──────────────────────────────────────
-  if (p.includes('directory') || p.includes('dir enum') || p.includes('path brute') || p.includes('enumerate endpoint') || p.includes('hidden endpoint')) {
+  // ── Wiki / documentation / runbook ──────────────────────────────────
+  if (p.includes('wiki') || p.includes('doc') || p.includes('runbook') || p.includes('knowledge') || p.includes('search') || p.includes('edit') || p.includes('modify')) {
     return [
-      `> Loading wordlist for directory brute-force...`,
-      `> Brute-forcing directories on ${nodeTitle}...`,
-      '> Sending requests... [==========>          ] 47%',
-      '> Filtering responses by status code...',
-      '> Sending requests... [===================> ] 94%',
-      '> Compiling discovered endpoints...',
+      `> Reviewing content on ${nodeTitle}...`,
+      '> Searching for sensitive information in documentation...',
+      '> Evaluating content access controls...',
+      '> Checking edit permissions and approval workflows...',
+      '> Assessing information exposure risk...',
     ];
   }
 
-  // ── XSS ───────────────────────────────────────────────────────────────
-  if (p.includes('xss') || p.includes('cross-site') || p.includes('script') || p.includes('reflected') || p.includes('stored xss')) {
+  // ── Explore / enumerate features ────────────────────────────────────
+  if (p.includes('explore') || p.includes('enumerate') || p.includes('what') || p.includes('feature') || p.includes('module') || p.includes('available') || p.includes('look') || p.includes('check') || p.includes('review') || p.includes('investigate') || p.includes('assess')) {
     return [
-      `> Testing ${nodeTitle} for reflected XSS...`,
-      '> Injecting script tags into input parameters...',
-      '> Checking output encoding in response body...',
-      '> Trying event handler payloads...',
-      '> Evaluating Content-Security-Policy header...',
-      '> Analyzing response for unescaped reflection points...',
+      `> Exploring available features on ${nodeTitle}...`,
+      '> Mapping accessible functionality...',
+      '> Evaluating feature exposure and controls...',
+      '> Analyzing configuration and permissions...',
+      '> Compiling assessment findings...',
     ];
   }
 
-  // ── SSRF ──────────────────────────────────────────────────────────────
-  if (p.includes('ssrf') || p.includes('server-side request') || p.includes('request forgery') || p.includes('internal network') || p.includes('internal endpoint')) {
+  // ── Technology / fingerprinting ─────────────────────────────────────
+  if (p.includes('technology') || p.includes('stack') || p.includes('framework') || p.includes('fingerprint') || p.includes('identify')) {
     return [
-      '> Crafting SSRF payload targeting internal network...',
-      '> Submitting URL parameter pointing to 127.0.0.1...',
-      '> Probing internal IP range 10.0.0.0/24...',
-      '> Received response from 10.0.0.5:8080 — internal service detected',
-      '> Enumerating additional internal hosts...',
-      '> Mapping discovered internal services...',
+      `> Identifying technology stack on ${nodeTitle}...`,
+      '> Analyzing server response headers...',
+      '> Detecting frameworks and libraries in use...',
+      '> Cross-referencing versions against vulnerability databases...',
+      '> Compiling technology profile...',
     ];
   }
 
-  // ── Command injection ─────────────────────────────────────────────────
-  if (p.includes('command inject') || p.includes('rce') || p.includes('remote code') || p.includes('shell') || p.includes('ping') || p.includes('os command') || p.includes(';') || p.includes('$(') || p.includes('`')) {
+  // ── Domain / certificate reconnaissance ─────────────────────────────
+  if (p.includes('domain') || p.includes('certificate') || p.includes('ssl') || p.includes('tls') || p.includes('whois') || p.includes('dns') || p.includes('subdomain')) {
     return [
-      `> Testing ${nodeTitle} for command injection...`,
-      '> Injecting shell metacharacters into parameter...',
-      '> Payload: ;id',
-      '> Analyzing response for command output...',
-      '> Testing alternative separators: | && $()',
-      '> Checking for blind command injection via timing...',
+      `> Investigating domain and certificate information for ${host}...`,
+      '> Checking certificate transparency logs...',
+      '> Reviewing registration and ownership records...',
+      '> Analyzing SSL/TLS configuration...',
+      '> Compiling reconnaissance findings...',
     ];
   }
 
-  // ── IDOR / access control ─────────────────────────────────────────────
-  if (p.includes('idor') || p.includes('insecure direct') || p.includes('access control') || p.includes('authorization bypass') || p.includes('other user')) {
+  // ── Concurrent / race condition testing ─────────────────────────────
+  if (p.includes('concurrent') || p.includes('race') || p.includes('simultaneous') || p.includes('parallel') || p.includes('double')) {
     return [
-      '> Enumerating object IDs on target endpoint...',
-      '> Sending requests with sequential IDs (1..20)...',
-      '> Comparing response codes across user boundaries...',
-      '> Checking horizontal privilege escalation...',
-      '> Testing parameter tampering on resource identifiers...',
-      '> Analyzing access control enforcement...',
+      `> Testing concurrent request handling on ${nodeTitle}...`,
+      '> Submitting parallel requests...',
+      '> Evaluating transaction integrity under load...',
+      '> Checking for timing-based vulnerabilities...',
+      '> Assessing concurrency controls...',
     ];
   }
 
-  // ── JWT / token attacks ───────────────────────────────────────────────
-  if (p.includes('jwt') || p.includes('token') || p.includes('forge') || p.includes('hs256') || p.includes('secret')) {
+  // ── Print / job history ─────────────────────────────────────────────
+  if (p.includes('print') || p.includes('job') || p.includes('cups') || p.includes('history') || p.includes('log')) {
     return [
-      '> Decoding JWT payload from session cookie...',
-      '> Token claims: {"uid":1024,"type":"user"}',
-      '> Algorithm: HS256 — symmetric signing',
-      '> Attempting to crack signing secret...',
-      '> Testing algorithm confusion (HS256 → none)...',
-      '> Analyzing token expiration and validation...',
+      `> Reviewing activity logs on ${nodeTitle}...`,
+      '> Checking for sensitive information in historical records...',
+      '> Evaluating data retention and access controls...',
+      '> Analyzing logged metadata...',
+      '> Assessing information leakage through logs...',
     ];
   }
 
-  // ── Registration / account creation ───────────────────────────────────
-  if (p.includes('register') || p.includes('sign up') || p.includes('signup') || p.includes('create account') || p.includes('new account')) {
+  // ── Backup / archive ───────────────────────────────────────────────
+  if (p.includes('backup') || p.includes('archive') || p.includes('restore') || p.includes('veeam') || p.includes('snapshot')) {
     return [
-      '> Sending registration request to sign-up endpoint...',
-      '> Submitting email and password...',
-      '> Received 201 Created response...',
-      '> Extracting session token from Set-Cookie header...',
-      '> Verifying authenticated session...',
+      `> Assessing backup infrastructure on ${nodeTitle}...`,
+      '> Checking backup console access controls...',
+      '> Evaluating archive encryption and protection...',
+      '> Testing for accessible backup files...',
+      '> Assessing data recovery risk...',
     ];
   }
 
-  // ── Brute force / credential stuffing ─────────────────────────────────
-  if (p.includes('brute force') || p.includes('brute-force') || p.includes('credential stuff')) {
+  // ── Active Directory / LDAP / Kerberos ──────────────────────────────
+  if (p.includes('directory') || p.includes('ldap') || p.includes('kerberos') || p.includes('active directory') || p.includes('ad ') || p.includes('domain')) {
     return [
-      '> Loading credential wordlist (14 million entries)...',
-      `> Launching brute-force attack against ${nodeTitle}...`,
-      '> Testing username:password combinations (16 threads)...',
-      '> Attempt 2847 / 14344321 — ~896 tries/min...',
-      '> Monitoring for rate limiting or account lockout...',
-      '> Analyzing responses for valid sessions...',
-    ];
-  }
-  if (p.includes('password') || p.includes('credential') || p.includes('login') || p.includes('authenticate')) {
-    return [
-      `> Attempting authentication against ${nodeTitle}...`,
-      '> Testing common credential pairs...',
-      '> Checking for default credentials...',
-      '> Analyzing response for session tokens...',
-      '> Checking for account lockout policy...',
-      '> Measuring response timing for user enumeration...',
-    ];
-  }
-
-  // ── File upload attacks ───────────────────────────────────────────────
-  if (p.includes('upload') || p.includes('web shell') || p.includes('webshell') || p.includes('polyglot') || p.includes('file upload')) {
-    return [
-      '> Crafting polyglot payload (JPEG header + PHP body)...',
-      '> Uploading crafted file to upload endpoint...',
-      '> Checking server-side content type validation...',
-      '> Testing for magic byte verification bypass...',
-      '> Checking if uploaded file is executable at returned URL...',
-      '> Testing path traversal in filename parameter...',
-    ];
-  }
-
-  // ── Path traversal / LFI ──────────────────────────────────────────────
-  if (p.includes('traversal') || p.includes('lfi') || p.includes('local file') || p.includes('../') || p.includes('path traversal')) {
-    return [
-      '> Testing path traversal sequences on target parameter...',
-      '> Payload: ../../../../etc/passwd',
-      '> Trying URL-encoded traversal: %2e%2e%2f%2e%2e%2f',
-      '> Trying double encoding: %252e%252e%252f',
-      '> Trying null byte termination: ../etc/passwd%00.pdf',
-      '> Analyzing response for file contents...',
-    ];
-  }
-
-  // ── XXE ───────────────────────────────────────────────────────────────
-  if (p.includes('xxe') || p.includes('xml external') || p.includes('xml entity') || p.includes('svg')) {
-    return [
-      '> Crafting XML payload with external entity declaration...',
-      '> Embedding entity reference targeting /etc/passwd...',
-      '> Submitting payload to target endpoint...',
-      '> Checking for out-of-band entity resolution...',
-      '> Testing blind XXE via external DTD...',
-      '> Analyzing response for file content exfiltration...',
-    ];
-  }
-
-  // ── CSRF ──────────────────────────────────────────────────────────────
-  if (p.includes('csrf') || p.includes('cross-site request') || p.includes('forged request')) {
-    return [
-      '> Inspecting anti-CSRF protections...',
-      '> Checking for CSRF token in form: found (double-submit cookie)',
-      '> Checking SameSite cookie attribute: SameSite=Lax',
-      '> Checking Origin/Referer validation...',
-      '> Attempting token prediction...',
-      '> Crafting cross-origin POST with forged token...',
-    ];
-  }
-
-  // ── Race condition ────────────────────────────────────────────────────
-  if (p.includes('race') || p.includes('toctou') || p.includes('concurrent')) {
-    return [
-      '> Preparing concurrent request batch (50 threads)...',
-      '> Firing parallel requests to target endpoint...',
-      '> Monitoring for inconsistent state responses...',
-      '> Checking for time-of-check/time-of-use windows...',
-      '> Analyzing rate limiter behavior under load...',
-      '> Evaluating response deltas for exploitable gaps...',
-    ];
-  }
-
-  // ── GraphQL ───────────────────────────────────────────────────────────
-  if (p.includes('graphql') || p.includes('introspect') || p.includes('mutation') || p.includes('query depth')) {
-    return [
-      '> Sending introspection query to GraphQL endpoint...',
-      '> Introspection disabled — trying alternative enumeration...',
-      '> Sending intentional typos to trigger field suggestions...',
-      '> Leaked field names: adminUsers, internalNotes, secretKey',
-      '> Testing query depth limits with nested payloads...',
-      '> Checking for batch query aliasing bypass...',
-    ];
-  }
-
-  // ── Redis ─────────────────────────────────────────────────────────────
-  if (p.includes('redis') || p.includes('6379') || p.includes('session hijack') || p.includes('session steal')) {
-    return [
-      '> Connecting to Redis instance on port 6379...',
-      '> Attempting unauthenticated INFO command...',
-      '> Authentication required — testing common passwords...',
-      '> Testing for protected mode bypass...',
-      '> Checking if instance is bound to loopback only...',
-      '> Analyzing connection error responses...',
-    ];
-  }
-
-  // ── FTP ───────────────────────────────────────────────────────────────
-  if (p.includes('ftp') || p.includes('anonymous') || p.includes('vsftpd')) {
-    return [
-      '> Connecting to FTP service on port 21...',
-      '> Server banner: vsFTPd 3.0.5',
-      '> Attempting anonymous login...',
-      '> Anonymous login rejected — credentials required',
-      '> Testing default FTP credentials...',
-      '> Checking for known vsftpd vulnerabilities...',
-    ];
-  }
-
-  // ── SMTP ──────────────────────────────────────────────────────────────
-  if (p.includes('smtp') || p.includes('mail') || p.includes('vrfy') || p.includes('relay')) {
-    return [
-      '> Connecting to SMTP service on port 25...',
-      '> Server banner: Postfix ESMTP',
-      '> Sending EHLO to enumerate supported commands...',
-      '> VRFY command enabled — testing user enumeration...',
-      '> Checking for open relay configuration...',
-      '> Testing CRLF injection in MAIL FROM header...',
-    ];
-  }
-
-  // ── Webhook / payment forgery ─────────────────────────────────────────
-  if (p.includes('webhook') || p.includes('stripe') || p.includes('payment') || p.includes('replay')) {
-    return [
-      '> Crafting forged webhook payload...',
-      '> Sending request with manipulated signature header...',
-      '> Signature verification failed — analyzing timing...',
-      '> Measuring response time delta for timing attack...',
-      '> Testing with leaked test-mode signing secret...',
-      '> Checking for event replay protections...',
-    ];
-  }
-
-  // ── Vulnerability scanning ────────────────────────────────────────────
-  if (p.includes('vuln scan') || p.includes('vulnerability scan')) {
-    return [
-      `> Running vulnerability scan against ${nodeTitle}...`,
-      '> Checking server headers for information disclosure...',
-      '> Testing for known CVEs on detected services...',
-      '> Probing for default credentials on admin interfaces...',
-      '> Compiling vulnerability report...',
-    ];
-  }
-
-  // ── Technology fingerprinting ─────────────────────────────────────────
-  if (p.includes('fingerprint') || p.includes('technolog')) {
-    return [
-      `> Fingerprinting technologies on ${nodeTitle}...`,
-      '> Analyzing HTTP response headers...',
-      '> Detected: nginx/1.24.0, Express.js, Node.js',
-      '> Identifying cookie patterns and session handling...',
-      '> Cross-referencing versions with vulnerability databases...',
-    ];
-  }
-
-  // ── Privilege escalation / admin ──────────────────────────────────────
-  if (p.includes('admin') || p.includes('privilege') || p.includes('escalat') || p.includes('employee')) {
-    return [
-      '> Inspecting current session privileges...',
-      '> Current role: "user" — targeting elevation...',
-      '> Crafting request with modified role parameters...',
-      '> Sending escalation payload to target endpoint...',
-      '> Analyzing server response for access change...',
-    ];
-  }
-
-  // ── DNS / recon ───────────────────────────────────────────────────────
-  if (p.includes('dns') || p.includes('lookup') || p.includes('recon') || p.includes('subdomain')) {
-    return [
-      '> Querying DNS records...',
-      '> Resolving A, MX, and NS records...',
-      '> Enumerating subdomains via certificate transparency logs...',
-      '> Checking for zone transfer (AXFR)...',
-      '> Compiling reconnaissance results...',
-    ];
-  }
-
-  // ── Export / download / data exfiltration ──────────────────────────────
-  if (p.includes('export') || p.includes('download') || p.includes('exfil') || p.includes('data')) {
-    return [
-      '> Requesting data export from target endpoint...',
-      '> Export job queued — polling for completion...',
-      '> Checking export ID format for predictability...',
-      '> Testing access controls on download URL...',
-      '> Analyzing export endpoint for authorization flaws...',
-    ];
-  }
-
-  // ── Profile / account info ────────────────────────────────────────────
-  if (p.includes('profile') || p.includes('account') || p.includes('user info') || p.includes('disclosure') || p.includes('information leak')) {
-    return [
-      `> Querying profile endpoint on ${nodeTitle}...`,
-      '> Inspecting response fields for sensitive data...',
-      '> Checking for internal field leakage (user_type, password hash)...',
-      '> Comparing authenticated vs. public response fields...',
-      '> Analyzing information disclosure risk...',
-    ];
-  }
-
-  // ── Contact / email change / account takeover ─────────────────────────
-  if (p.includes('contact') || p.includes('email change') || p.includes('phone') || p.includes('account takeover') || p.includes('takeover')) {
-    return [
-      '> Sending contact update request to target endpoint...',
-      '> Checking if email change requires verification...',
-      '> Verification required — testing for bypass...',
-      '> Checking CSRF protections on update endpoint...',
-      '> Analyzing account takeover vectors...',
-    ];
-  }
-
-  // ── Notification / settings manipulation ──────────────────────────────
-  if (p.includes('notification') || p.includes('preference') || p.includes('setting') || p.includes('toggle')) {
-    return [
-      '> Sending preference update to target endpoint...',
-      '> Testing for mass assignment with extra fields...',
-      '> Strict schema validation — unknown fields rejected',
-      '> Checking for parameter pollution...',
-      '> Analyzing response for privilege escalation vectors...',
-    ];
-  }
-
-  // ── Support / ticket / social engineering ─────────────────────────────
-  if (p.includes('support') || p.includes('ticket') || p.includes('social engineer') || p.includes('phish') || p.includes('markdown')) {
-    return [
-      '> Submitting crafted ticket to support portal...',
-      '> Injecting HTML payload via Markdown body...',
-      '> Checking if payload renders in agent dashboard...',
-      '> Evaluating CSP: script-src \'self\' — inline scripts blocked',
-      '> Testing alternative injection vectors...',
-      '> Analyzing sandboxing of rendered content...',
-    ];
-  }
-
-  // ── Order / purchase manipulation ─────────────────────────────────────
-  if (p.includes('order') || p.includes('purchase') || p.includes('cart') || p.includes('checkout') || p.includes('discount')) {
-    return [
-      '> Querying order history endpoint...',
-      '> Testing for order ID enumeration (sequential IDs)...',
-      '> Checking access controls across user boundaries...',
-      '> Testing price manipulation in checkout flow...',
-      '> Analyzing discount code validation...',
-    ];
-  }
-
-  // ── Generic HTTP request ──────────────────────────────────────────────
-  if (p.includes('request') || p.includes('post') || p.includes('api') || p.includes('endpoint') || p.includes('http')) {
-    return [
-      `> Sending HTTP request to ${nodeTitle}...`,
-      '> Inspecting response headers...',
-      '> Analyzing response body for sensitive data...',
-      '> Checking for information disclosure in error messages...',
-      '> Parsing response for actionable findings...',
-    ];
-  }
-
-  // ── Port scan (generic) ───────────────────────────────────────────────
-  if (p.includes('port') || p.includes('scan') || p.includes('service detection')) {
-    return [
-      `> Scanning ports on ${nodeTitle}...`,
-      '> Probing TCP ports 1-65535...',
-      '> Discovered open ports: 21, 80, 443, 6379',
-      '> Running service version detection...',
-      '> Fingerprinting service banners...',
-    ];
-  }
-
-  // ── Enumeration (generic) ─────────────────────────────────────────────
-  if (p.includes('enum') || p.includes('discover') || p.includes('list') || p.includes('parameter') || p.includes('analysis') || p.includes('analyz')) {
-    return [
-      `> Enumerating ${nodeTitle}...`,
-      '> Testing with unexpected field names...',
-      '> Analyzing error messages for information leakage...',
-      '> Mapping available parameters and behaviors...',
-      '> Compiling enumeration results...',
+      `> Testing directory service on ${nodeTitle}...`,
+      '> Evaluating authentication requirements...',
+      '> Checking for unauthenticated access...',
+      '> Assessing user enumeration controls...',
+      '> Analyzing directory security posture...',
     ];
   }
 
   // ── Generic fallback ──────────────────────────────────────────────────
   return [
-    `> Connecting to ${nodeTitle}...`,
-    '> Crafting request payload...',
-    '> Sending request to target endpoint...',
-    '> Analyzing server response...',
-    '> Processing results...',
+    `> Initiating security assessment of ${nodeTitle}...`,
+    `> Connecting to ${host}...`,
+    '> Analyzing target configuration...',
+    '> Evaluating security controls...',
+    '> Processing assessment results...',
   ];
 }
 
