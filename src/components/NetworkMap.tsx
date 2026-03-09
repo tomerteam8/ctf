@@ -1,14 +1,22 @@
+import { useState } from 'react';
 import { ReactFlow, Background, BackgroundVariant, Controls, MiniMap, Handle, Position } from '@xyflow/react';
 import type { Node, Edge, NodeProps } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { networkDevices, networkEdges } from '../data/gameData';
-import type { NetworkDevice } from '../data/types';
+import type { NetworkDevice, CveDetail } from '../data/types';
 
 // ── Colors ───────────────────────────────────────────────────────────────────
 
 const CVE_COLOR = '#fbbf24';        // amber-400 — faint yellow for CVE nodes
 const CVE_BORDER = '#fbbf2466';
 const CVE_GLOW = '0 0 8px rgba(251,191,36,0.15)';
+
+function cvssColor(score: number): string {
+  if (score >= 9.0) return '#ff3366';
+  if (score >= 7.0) return '#ff6b35';
+  if (score >= 4.0) return '#ffc107';
+  return '#94a3b8';
+}
 
 function bgColor(hex: string, alpha = 0.06): string {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -53,11 +61,13 @@ const H: React.CSSProperties = { opacity: 0, width: 1, height: 1 };
 interface DeviceData {
   label: string; ip: string; port?: string; iconType: string;
   color: string; bg: string; services?: string; hasCVE?: boolean;
+  cves?: CveDetail[];
 }
 
 function DeviceNode({ data }: NodeProps) {
   const d = data as unknown as DeviceData;
   const cve = d.hasCVE;
+  const [hoveredCveId, setHoveredCveId] = useState<string | null>(null);
 
   return (
     <div style={{
@@ -84,6 +94,98 @@ function DeviceNode({ data }: NodeProps) {
       <Handle type="source" position={Position.Top}    id="top-s"   style={{ ...H, left: '62%' }} />
       <Handle type="source" position={Position.Bottom} id="bottom-l" style={{ ...H, left: '38%' }} />
       <Handle type="source" position={Position.Bottom} id="bottom-r" style={{ ...H, left: '62%' }} />
+
+      {/* CVE badges — floated above the card */}
+      {d.cves && d.cves.length > 0 && (
+        <div style={{
+          position: 'absolute', bottom: '100%', left: '50%',
+          transform: 'translateX(-50%)',
+          marginBottom: 5,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+        }}>
+          {d.cves.map((c) => {
+            const cc = cvssColor(c.cvss);
+            const isHovered = hoveredCveId === c.id;
+            return (
+              <div key={c.id} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                {/* Hover tooltip */}
+                {isHovered && (
+                  <div style={{
+                    position: 'absolute', bottom: 'calc(100% + 5px)', left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 210,
+                    background: '#0d1320',
+                    border: `1px solid ${cc}55`,
+                    borderRadius: 7,
+                    padding: '9px 11px',
+                    zIndex: 9999,
+                    boxShadow: `0 6px 24px rgba(0,0,0,0.6), 0 0 0 1px ${cc}22`,
+                    pointerEvents: 'none',
+                  }}>
+                    {/* CVE ID */}
+                    <div style={{
+                      fontFamily: 'monospace', fontSize: 10, fontWeight: 700,
+                      color: cc, marginBottom: 6, letterSpacing: '0.03em',
+                    }}>
+                      {c.id}
+                    </div>
+                    {/* KEV + CVSS row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+                      <span style={{
+                        fontSize: 9, fontWeight: 800, letterSpacing: '0.06em',
+                        padding: '2px 6px', borderRadius: 3,
+                        background: c.kev ? 'rgba(255,51,102,0.18)' : 'rgba(100,116,139,0.15)',
+                        color: c.kev ? '#ff3366' : '#64748b',
+                        border: `1px solid ${c.kev ? 'rgba(255,51,102,0.35)' : 'rgba(100,116,139,0.25)'}`,
+                      }}>
+                        {c.kev ? 'KEV' : 'NO KEV'}
+                      </span>
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
+                        padding: '2px 6px', borderRadius: 3,
+                        background: cc + '20', color: cc,
+                        border: `1px solid ${cc}40`,
+                      }}>
+                        CVSS {c.cvss}
+                      </span>
+                    </div>
+                    {/* Summary */}
+                    <div style={{ fontSize: 9, color: '#94a3b8', lineHeight: 1.45 }}>
+                      {c.summary}
+                    </div>
+                  </div>
+                )}
+                {/* Badge */}
+                <div
+                  onMouseEnter={() => setHoveredCveId(c.id)}
+                  onMouseLeave={() => setHoveredCveId(null)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); window.open(`https://www.cvedetails.com/cve/${c.id}/`, '_blank'); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    padding: '3px 9px', borderRadius: 5,
+                    background: cc + '1e',
+                    border: `1.5px solid ${cc}66`,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    boxShadow: `0 0 6px ${cc}33`,
+                  }}
+                >
+                  <span style={{ fontSize: 9, fontWeight: 900, color: cc, letterSpacing: '0.08em' }}>CVE</span>
+                  <span style={{
+                    fontSize: 9, fontWeight: 800, color: cc,
+                    background: cc + '30', padding: '0 4px', borderRadius: 3,
+                    letterSpacing: '0.04em',
+                  }}>
+                    {c.cvss}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <Icon type={d.iconType} color={d.color} size={22} />
       <div style={{ fontSize: 9, fontWeight: 700, color: '#e2e8f0', textAlign: 'center', lineHeight: 1.2, marginTop: 1 }}>
         {d.label}
@@ -202,7 +304,7 @@ function toDeviceData(dev: NetworkDevice): DeviceData {
     label: dev.label, ip: dev.ip, port: dev.port,
     iconType: dev.iconType, color: dev.color,
     bg: bgColor(dev.color), services: dev.services,
-    hasCVE: dev.hasCVE,
+    hasCVE: dev.hasCVE, cves: dev.cves,
   };
 }
 
@@ -218,9 +320,9 @@ interface ZoneDef {
 }
 
 const PAD_X = 20;
-const PAD_Y = 40;
+const PAD_Y = 58;   // extra top padding so CVE badges float above the zone label
 const CELL_W = 148;
-const CELL_H = 100;
+const CELL_H = 130; // tall enough that CVE badges on row N don't overlap row N-1 cards
 
 function zoneSize(cols: number, rows: number): { width: number; height: number } {
   return { width: PAD_X * 2 + cols * CELL_W, height: PAD_Y + rows * CELL_H + 15 };

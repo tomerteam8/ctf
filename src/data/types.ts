@@ -27,6 +27,13 @@ export interface Action {
 
 export type InfoSeverity = 'critical' | 'high' | 'medium' | 'info';
 
+export interface CveDetail {
+  id: string;       // e.g. 'CVE-2024-23897'
+  cvss: number;     // CVSS base score
+  kev: boolean;     // In CISA KEV catalog
+  summary: string;  // Short description
+}
+
 export interface ServiceDetail {
   label: string;
   value: string;
@@ -44,6 +51,7 @@ export interface PentestNode {
   discovered: boolean;
   status: NodeStatus;
   serviceInfo?: ServiceDetail[];
+  cves?: CveDetail[];
   ring?: number;
   ip?: string;
   port?: string;
@@ -64,6 +72,7 @@ export interface NetworkDevice {
   rules?: string[];
   isTarget?: boolean;
   hasCVE?: boolean;
+  cves?: CveDetail[];
 }
 
 export interface NetworkEdge {

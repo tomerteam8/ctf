@@ -16,6 +16,20 @@ const severityColor: Record<InfoSeverity, string> = {
   info: '#94a3b8',
 };
 
+const cvssColor = (score: number) => {
+  if (score >= 9.0) return '#ff3366';
+  if (score >= 7.0) return '#ff6b35';
+  if (score >= 4.0) return '#ffc107';
+  return '#94a3b8';
+};
+
+const cvssLabel = (score: number) => {
+  if (score >= 9.0) return 'CRITICAL';
+  if (score >= 7.0) return 'HIGH';
+  if (score >= 4.0) return 'MEDIUM';
+  return 'LOW';
+};
+
 const zoneColor: Record<string, string> = {
   Perimeter: '#f59e0b',
   Corporate: '#3b82f6',
@@ -46,6 +60,7 @@ export default function NodePanel() {
 
   const [input, setInput] = useState('');
   const [showServiceInfo, setShowServiceInfo] = useState(false);
+  const [showCveInfo, setShowCveInfo] = useState(false);
   const [hintWarning, setHintWarning] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -56,9 +71,10 @@ export default function NodePanel() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [history.length]);
 
-  // Collapse service info when switching nodes
+  // Collapse service info and CVE section when switching nodes
   useEffect(() => {
     setShowServiceInfo(false);
+    setShowCveInfo(false);
   }, [selectedNodeId]);
 
   // Pick up pending prompt text from asset clicks
@@ -227,6 +243,107 @@ export default function NodePanel() {
                         </span>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* CVE Details */}
+            {node.cves && node.cves.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <button
+                  onClick={() => setShowCveInfo(!showCveInfo)}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: '1px solid rgba(251,191,36,0.35)',
+                    background: 'rgba(251,191,36,0.07)',
+                    color: '#fbbf24',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.15em',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>⚠</span>
+                    <span>CVEs ({node.cves.length})</span>
+                  </span>
+                  <span style={{ fontSize: 10, transition: 'transform 0.2s', transform: showCveInfo ? 'rotate(180deg)' : 'rotate(0)' }}>
+                    ▼
+                  </span>
+                </button>
+                {showCveInfo && (
+                  <div style={{
+                    marginTop: 4,
+                    borderRadius: '0 0 8px 8px',
+                    background: 'rgba(10,14,23,0.5)',
+                    border: '1px solid rgba(251,191,36,0.2)',
+                    borderTop: 'none',
+                    overflow: 'hidden',
+                  }}>
+                    {node.cves.map((cve, i) => {
+                      const cc = cvssColor(cve.cvss);
+                      const label = cvssLabel(cve.cvss);
+                      return (
+                        <div
+                          key={cve.id}
+                          style={{
+                            padding: '10px 12px',
+                            borderBottom: i < node.cves!.length - 1 ? '1px solid rgba(42,58,92,0.5)' : 'none',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                            <a
+                              href={`https://www.cvedetails.com/cve/${cve.id}/`}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                fontFamily: 'monospace', fontSize: 12, fontWeight: 700,
+                                color: cc, textDecoration: 'underline',
+                                textDecorationColor: cc + '55', flex: 1,
+                              }}
+                            >
+                              {cve.id}
+                            </a>
+                            <span style={{
+                              padding: '2px 6px', borderRadius: 4,
+                              background: cc + '22', border: `1px solid ${cc}44`,
+                              fontSize: 10, fontWeight: 700, color: cc,
+                              letterSpacing: '0.03em',
+                            }}>
+                              CVSS {cve.cvss}
+                            </span>
+                            <span style={{
+                              padding: '2px 6px', borderRadius: 4,
+                              background: cc + '18', border: `1px solid ${cc}33`,
+                              fontSize: 9, fontWeight: 700, color: cc,
+                              textTransform: 'uppercase', letterSpacing: '0.08em',
+                            }}>
+                              {label}
+                            </span>
+                            {cve.kev && (
+                              <span style={{
+                                padding: '2px 6px', borderRadius: 4,
+                                background: 'rgba(255,51,102,0.2)', border: '1px solid rgba(255,51,102,0.4)',
+                                fontSize: 9, fontWeight: 800, color: '#ff3366',
+                                letterSpacing: '0.08em',
+                              }}>
+                                KEV
+                              </span>
+                            )}
+                          </div>
+                          <p style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5, margin: 0 }}>
+                            {cve.summary}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

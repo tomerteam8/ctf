@@ -988,6 +988,9 @@ export const sampleNodes: PentestNode[] = [
     ip: '192.168.1.11',
     port: '443',
     zone: 'Corporate',
+    cves: [
+      { id: 'CVE-2026-22200', cvss: 9.8, kev: false, summary: 'File read → RCE in osTicket 1.17 agent panel — requires authenticated agent access (SSO-restricted)' },
+    ],
     serviceInfo: [
       { label: 'Software', value: 'osTicket 1.17' },
       { label: 'CVE-2026-22200', value: 'File read → RCE (CVSS 9.8) — requires agent auth', severity: 'critical' },
@@ -1082,6 +1085,9 @@ export const sampleNodes: PentestNode[] = [
     ip: '192.168.1.20',
     port: '631',
     zone: 'Corporate',
+    cves: [
+      { id: 'CVE-2024-47176', cvss: 9.0, kev: false, summary: 'RCE via malicious IPP URL sent to CUPS — requires attacker-controlled UDP 631 (chained), blocked by Internal Firewall' },
+    ],
     serviceInfo: [
       { label: 'Software', value: 'CUPS 2.0.1' },
       { label: 'CVE-2024-47176', value: 'RCE via UDP 631 (CVSS 9.0 chained) — blocked by Internal FW', severity: 'high' },
@@ -1125,6 +1131,9 @@ export const sampleNodes: PentestNode[] = [
     ip: '10.30.1.10',
     port: '9000',
     zone: 'Management',
+    cves: [
+      { id: 'CVE-2024-22116', cvss: 9.9, kev: false, summary: 'RCE via unescaped parameters in Zabbix Ping script — requires admin authentication' },
+    ],
     serviceInfo: [
       { label: 'Software', value: 'Zabbix Server 6.4.12' },
       { label: 'CVE-2024-22116', value: 'RCE via Ping script — unescaped parameters (CVSS 9.9)', severity: 'critical' },
@@ -1248,6 +1257,9 @@ export const sampleNodes: PentestNode[] = [
     ip: '10.30.1.10',
     port: '3000',
     zone: 'Management',
+    cves: [
+      { id: 'CVE-2021-43798', cvss: 7.5, kev: true, summary: 'Path traversal allowing unauthenticated file read of arbitrary files — blocked by nginx reverse proxy stripping traversal sequences' },
+    ],
     serviceInfo: [
       { label: 'Version', value: 'Grafana 8.2' },
       { label: 'CVE-2021-43798', value: 'Path traversal (CVSS 7.5) — blocked by nginx reverse proxy', severity: 'high' },
@@ -1352,21 +1364,21 @@ export const networkDevices: NetworkDevice[] = [
 
   // Corporate — employee daily work (corp.target.com)
   { id: 'corp-portal', label: 'Corp Portal', ip: '192.168.1.5', port: '443', ring: 3, zone: 'Corporate', color: '#3b82f6', iconType: 'webserver', kind: 'device', services: 'corp.target.com' },
-  { id: 'helpdesk',  label: 'Helpdesk',  ip: '192.168.1.11', port: '443', ring: 3, zone: 'Corporate', color: '#3b82f6', iconType: 'ticket',  kind: 'device', services: 'osTicket 1.17', hasCVE: true },
+  { id: 'helpdesk',  label: 'Helpdesk',  ip: '192.168.1.11', port: '443', ring: 3, zone: 'Corporate', color: '#3b82f6', iconType: 'ticket',  kind: 'device', services: 'osTicket 1.17', hasCVE: true, cves: [{ id: 'CVE-2026-22200', cvss: 9.8, kev: false, summary: 'File read → RCE in osTicket 1.17 — requires agent auth' }] },
   { id: 'wiki',      label: 'Wiki',      ip: '192.168.1.12', port: '443', ring: 3, zone: 'Corporate', color: '#3b82f6', iconType: 'wiki',    kind: 'device', services: 'BookStack 24.x' },
-  { id: 'printer',   label: 'Printer',   ip: '192.168.1.20', port: '631', ring: 3, zone: 'Corporate', color: '#3b82f6', iconType: 'printer', kind: 'device', services: 'CUPS 2.0.1', hasCVE: true },
+  { id: 'printer',   label: 'Printer',   ip: '192.168.1.20', port: '631', ring: 3, zone: 'Corporate', color: '#3b82f6', iconType: 'printer', kind: 'device', services: 'CUPS 2.0.1', hasCVE: true, cves: [{ id: 'CVE-2024-47176', cvss: 9.0, kev: false, summary: 'RCE via malicious IPP URL on CUPS UDP 631 (chained) — blocked by Internal Firewall' }] },
 
   // Development — building and shipping (dev.target.com)
   { id: 'dev-portal', label: 'Dev Portal', ip: '10.20.1.5', port: '443', ring: 2, zone: 'Development', color: '#fbbf24', iconType: 'webserver', kind: 'device', services: 'dev.target.com' },
-  { id: 'jenkins', label: 'Jenkins CI',   ip: '10.20.1.10', port: '8080', ring: 2, zone: 'Development', color: '#fbbf24', iconType: 'jenkins', kind: 'device', services: 'Jenkins 2.426', hasCVE: true },
-  { id: 'gitlab',  label: 'GitLab',       ip: '10.20.1.11', port: '443',  ring: 2, zone: 'Development', color: '#f97316', iconType: 'git',     kind: 'device', services: 'GitLab CE 16', hasCVE: true },
+  { id: 'jenkins', label: 'Jenkins CI',   ip: '10.20.1.10', port: '8080', ring: 2, zone: 'Development', color: '#fbbf24', iconType: 'jenkins', kind: 'device', services: 'Jenkins 2.426', hasCVE: true, cves: [{ id: 'CVE-2024-23897', cvss: 9.8, kev: true, summary: 'Arbitrary file read via Jenkins CLI — can expose credentials and secrets (unauthenticated in some configs)' }] },
+  { id: 'gitlab',  label: 'GitLab',       ip: '10.20.1.11', port: '443',  ring: 2, zone: 'Development', color: '#f97316', iconType: 'git',     kind: 'device', services: 'GitLab CE 16', hasCVE: true, cves: [{ id: 'CVE-2023-7028', cvss: 10.0, kev: true, summary: 'Account takeover via email verification bypass in password reset — unauthenticated' }] },
   { id: 'nexus',   label: 'Nexus Repo',   ip: '10.20.1.12', port: '8081', ring: 2, zone: 'Development', color: '#00f0ff', iconType: 'package', kind: 'device', services: 'Nexus 3.68' },
 
   // Management — infrastructure backbone (mgmt.target.com)
   { id: 'active-directory',  label: 'Active Directory',  ip: '10.30.1.10', port: '389',  ring: 0, zone: 'Management', color: '#a855f7', iconType: 'directory', kind: 'device', services: 'Windows AD (LDAP+Kerberos)' },
-  { id: 'monitoring',        label: 'Grafana',           ip: '10.30.1.10', port: '3000', ring: 0, zone: 'Management', color: '#f97316', iconType: 'grafana',   kind: 'device', services: 'Grafana 8.2', hasCVE: true },
+  { id: 'monitoring',        label: 'Grafana',           ip: '10.30.1.10', port: '3000', ring: 0, zone: 'Management', color: '#f97316', iconType: 'grafana',   kind: 'device', services: 'Grafana 8.2', hasCVE: true, cves: [{ id: 'CVE-2021-43798', cvss: 7.5, kev: true, summary: 'Path traversal allowing unauthenticated file read — blocked by nginx reverse proxy' }] },
   { id: 'backups',           label: 'Backup Server',     ip: '10.30.1.10', port: '9090', ring: 0, zone: 'Management', color: '#00ff88', iconType: 'backup',    kind: 'device', services: 'Veeam' },
-  { id: 'microservice-check', label: 'Zabbix Server',   ip: '10.30.1.10', port: '9000', ring: 0, zone: 'Management', color: '#22d3ee', iconType: 'heartbeat', kind: 'device', services: 'Zabbix 6.4.12', hasCVE: true },
+  { id: 'microservice-check', label: 'Zabbix Server',   ip: '10.30.1.10', port: '9000', ring: 0, zone: 'Management', color: '#22d3ee', iconType: 'heartbeat', kind: 'device', services: 'Zabbix 6.4.12', hasCVE: true, cves: [{ id: 'CVE-2024-22116', cvss: 9.9, kev: false, summary: 'RCE via unescaped parameters in Zabbix Ping script — requires admin authentication' }] },
   { id: 'mgmt-db',            label: 'Mgmt Database',  ip: '10.30.1.10', port: '5432', ring: 0, zone: 'Management', color: '#a855f7', iconType: 'postgres',  kind: 'device', services: 'PostgreSQL (local trust)' },
 ];
 
