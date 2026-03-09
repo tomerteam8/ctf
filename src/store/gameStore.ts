@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { PentestNode, Asset, ActionResult, Difficulty } from '../data/types';
+import type { PentestNode, Asset, Achievement, ActionResult, Difficulty } from '../data/types';
 import { sampleNodes } from '../data/gameData';
 import { sendPrompt, LLM_NEEDS_KEY, LLM_PROVIDER } from '../services/llm';
 
@@ -23,6 +23,7 @@ interface GameState {
   nodeFailures: Record<string, number>;
   capturedFlag: { id: string; value: string } | null;
   capturedFlags: string[];
+  achievements: Achievement[];
 
   selectNode: (id: string | null) => void;
   executePrompt: (nodeId: string, prompt: string) => Promise<void>;
@@ -54,6 +55,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   nodeFailures: {},
   capturedFlag: null,
   capturedFlags: [],
+  achievements: [],
 
   selectNode: (id) => set({ selectedNodeId: id }),
 
@@ -153,6 +155,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         ? node.possibleActions.find((a) => a.id === llmResponse.matchedActionId)
         : null;
 
+
       // Server-side asset guard: on normal/hard, enforce that required assets
       // are referenced in the prompt. GPT alone can't be trusted for this.
       if (
@@ -208,6 +211,18 @@ export const useGameStore = create<GameState>((set, get) => ({
             }))
           : [];
 
+      // Build revealed achievements from the action definition
+      const revealedAchievements: Achievement[] =
+        llmResponse.success && matchedAction
+          ? (matchedAction.revealsAchievements || []).map((a, i) => ({
+              id: `${matchedAction.id}_ach_${i}_${Date.now()}`,
+              name: a.name,
+              description: a.description,
+              discoveredAt: nodeId,
+            }))
+          : [];
+
+
       // Use the action's revealsNodes (not GPT's) for game state integrity
       const revealedNodes =
         llmResponse.success && matchedAction ? matchedAction.revealsNodes : [];
@@ -250,9 +265,15 @@ export const useGameStore = create<GameState>((set, get) => ({
           ? [...s.capturedFlags, flag.id]
           : s.capturedFlags;
 
+        // Merge achievements (deduplicate by name)
+        const newAchievements = revealedAchievements.filter(
+          (a) => !s.achievements.some((e) => e.name === a.name),
+        );
+
         return {
           nodes,
           assets: [...s.assets, ...revealedAssets],
+          achievements: [...s.achievements, ...newAchievements],
           executingAction: false,
           executingPrompt: '',
           nodeFailures,

@@ -177,8 +177,8 @@ export const sampleNodes: PentestNode[] = [
         description: 'Use extracted service account credentials to authenticate to PostgreSQL and dump accessible tables from the shop database.',
         requiredAssets: ['db_credentials'],
         revealsNodes: [],
-        revealsAssets: [
-          { type: 'db_credentials', name: 'User Table Dump', value: '52,847 user records exfiltrated — emails + md5-hashed passwords from shop.public.users' },
+        revealsAchievements: [
+          { name: 'User Database Exfiltrated', description: '52,847 user records exfiltrated from shop.public.users — emails + md5-hashed passwords. High-severity data breach.' },
         ],
         category: 'exploit',
       },
@@ -244,6 +244,7 @@ export const sampleNodes: PentestNode[] = [
         description: 'Test whether mass automated form submissions could flood the support inbox and disrupt customer service operations. The form has no CAPTCHA — only IP-based rate limiting. However, the WAF detects automated patterns and begins blocking after approximately 10 rapid submissions.',
         requiredAssets: [],
         revealsNodes: [],
+        revealsAchievements: [{name: 'Denial of Service', description: 'Automated submissions overwhelm the support team — support queue flooded. Customer service disrupted.' }],
         category: 'exploit',
       },
     ],
@@ -579,7 +580,9 @@ export const sampleNodes: PentestNode[] = [
         revealsNodes: ['employee_portal'],
         revealsAssets: [
           { type: 'credentials', name: 'Employee Credentials', value: 'user_type changed from "user" to "employee" via SQLi on change-password endpoint' },
-          { type: 'logic_flaw', name: 'Staff Discount', value: 'Employee accounts receive staff discount — unauthorized near-free purchases now possible' },
+        ],
+        revealsAchievements: [
+          { name: 'Staff Discount', description: 'Employee account privilege escalated via SQLi — staff discount now active on all purchases. Unauthorized near-free purchases possible.' },
         ],
         category: 'exploit',
       },
@@ -657,7 +660,9 @@ export const sampleNodes: PentestNode[] = [
         revealsNodes: ['employee_portal'],
         revealsAssets: [
           { type: 'credentials', name: 'Employee Credentials', value: 'user_type changed from "user" to "employee" via social engineering — support agent manually upgraded account' },
-          { type: 'logic_flaw', name: 'Staff Discount', value: 'Employee accounts receive staff discount — unauthorized near-free purchases now possible' },
+        ],
+        revealsAchievements: [
+          { name: 'Staff Discount Unlocked', description: 'Support agent manually upgraded account via social engineering — staff discount now active. Unauthorized near-free purchases possible.' },
         ],
         category: 'exploit',
       },
@@ -1123,6 +1128,9 @@ export const sampleNodes: PentestNode[] = [
         description: 'Extract the management database containing service credentials, directory sync data, backup encryption keys, and the nightly customer data mirror. This would grant persistent access to the entire infrastructure.',
         requiredAssets: ['credentials'],
         revealsNodes: [],
+        revealsAchievements: [
+          { name: 'Management Database Exfiltrated', description: 'Full management DB extracted — service credentials, AD sync data, backup keys, and 52,847-record customer mirror. Complete infrastructure compromise.' },
+        ],
         category: 'exploit',
       },
     ],
@@ -1250,6 +1258,9 @@ export const sampleNodes: PentestNode[] = [
         description: 'Locate and extract backup archives from the server — full database dumps, directory snapshots, and configuration exports that would provide comprehensive access to the entire infrastructure.',
         requiredAssets: ['credentials'],
         revealsNodes: [],
+        revealsAchievements: [
+          { name: 'Backup Archives Exfiltrated', description: 'Veeam backup archives extracted — full DB dumps, AD snapshots, and 90-day config history. Long-term persistent access to all infrastructure data.' },
+        ],
         category: 'exploit',
       },
     ],

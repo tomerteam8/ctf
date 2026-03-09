@@ -4,6 +4,13 @@ export type NodeStatus = 'locked' | 'available' | 'completed';
 export type ActionCategory = 'recon' | 'exploit' | 'enumeration' | 'analysis';
 export type AssetType = 'api_key' | 'credentials' | 'db_credentials' | 'logic_flaw' | 'token' | 'certificate';
 
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  discoveredAt: string;
+}
+
 export interface Action {
   id: string;
   name: string;
@@ -11,6 +18,7 @@ export interface Action {
   requiredAssets: AssetType[];
   revealsNodes: string[];
   revealsAssets?: { type: AssetType; name: string; value: string }[];
+  revealsAchievements?: { name: string; description: string }[];
   category: ActionCategory;
   showAsHint?: boolean;
   hint?: string;
