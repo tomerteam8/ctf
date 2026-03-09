@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ReactFlow, Background, BackgroundVariant, Controls, MiniMap, Handle, Position } from '@xyflow/react';
 import type { Node, Edge, NodeProps } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { networkDevices, networkEdges } from '../data/gameData';
+import { networkDevices, networkEdges, ATTACK_TO_NETWORK } from '../data/gameData';
 import type { NetworkDevice, CveDetail } from '../data/types';
+import { useGameStore } from '../store/gameStore';
 
 // ── Colors ───────────────────────────────────────────────────────────────────
 
@@ -58,28 +59,34 @@ const H: React.CSSProperties = { opacity: 0, width: 1, height: 1 };
 
 // ── Device node ──────────────────────────────────────────────────────────────
 
+const REACHED_COLOR = '#00ff88';
+const REACHED_BORDER = 'rgba(0,255,136,0.55)';
+const REACHED_GLOW = '0 0 14px rgba(0,255,136,0.28)';
+
 interface DeviceData {
   label: string; ip: string; port?: string; iconType: string;
   color: string; bg: string; services?: string; hasCVE?: boolean;
   cves?: CveDetail[];
+  reached?: boolean;
 }
 
 function DeviceNode({ data }: NodeProps) {
   const d = data as unknown as DeviceData;
   const cve = d.hasCVE;
+  const reached = d.reached;
   const [hoveredCveId, setHoveredCveId] = useState<string | null>(null);
 
   return (
     <div style={{
       width: 128, padding: '7px 8px 6px',
-      background: d.bg,
-      border: `1.5px solid ${d.color}55`,
+      background: reached ? 'rgba(0,255,136,0.07)' : d.bg,
+      border: reached ? `1.5px solid ${REACHED_COLOR}66` : `1.5px solid ${d.color}55`,
       borderRadius: 7,
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
       position: 'relative',
-      outline: cve ? `2px solid ${CVE_BORDER}` : 'none',
+      outline: reached ? `2px solid ${REACHED_BORDER}` : cve ? `2px solid ${CVE_BORDER}` : 'none',
       outlineOffset: 2,
-      boxShadow: cve ? CVE_GLOW : 'none',
+      boxShadow: reached ? REACHED_GLOW : cve ? CVE_GLOW : 'none',
     }}>
       {/* Center handles */}
       <Handle type="target" position={Position.Top}    style={H} />
@@ -474,11 +481,74 @@ const EDGES: Edge[] = networkEdges.map((e) => ({
 // ── Main component ───────────────────────────────────────────────────────────
 
 export default function NetworkMap() {
+  const gameNodes = useGameStore((s) => s.nodes);
+
+  // Set of network device IDs that have been reached via the attack graph
+  const reachedDevices = useMemo(() => {
+    const reached = new Set<string>();
+    for (const [nodeId, node] of gameNodes) {
+      if (node.discovered) {
+        const devId = ATTACK_TO_NETWORK[nodeId];
+        if (devId) reached.add(devId);
+      }
+    }
+    return reached;
+  }, [gameNodes]);
+
+  // Attack-path edges: derived from parent→child relationships in the attack graph,
+  // only drawn when both endpoints are discovered and map to different network devices.
+  const attackEdges = useMemo<Edge[]>(() => {
+    const edges: Edge[] = [];
+    const seen = new Set<string>();
+
+    for (const [nodeId, node] of gameNodes) {
+      if (!node.discovered) continue;
+      const dstDevice = ATTACK_TO_NETWORK[nodeId];
+      if (!dstDevice) continue;
+
+      const parents = Array.isArray(node.parentId)
+        ? node.parentId
+        : node.parentId ? [node.parentId] : [];
+
+      for (const parentId of parents) {
+        const parentNode = gameNodes.get(parentId);
+        if (!parentNode?.discovered) continue;
+        const srcDevice = ATTACK_TO_NETWORK[parentId];
+        if (!srcDevice || srcDevice === dstDevice) continue;
+
+        const key = `${srcDevice}→${dstDevice}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        edges.push({
+          id: `attack-${srcDevice}-${dstDevice}`,
+          source: srcDevice,
+          target: dstDevice,
+          type: 'smoothstep',
+          animated: true,
+          style: { stroke: '#ff3366', strokeWidth: 2.5, strokeDasharray: '7 4' },
+          zIndex: 20,
+        });
+      }
+    }
+    return edges;
+  }, [gameNodes]);
+
+  // Overlay reached=true on device nodes that have been compromised
+  const displayNodes = useMemo<Node[]>(() => {
+    return NODES.map((n) => {
+      if (n.type !== 'device' || !reachedDevices.has(n.id)) return n;
+      return { ...n, data: { ...n.data, reached: true } };
+    });
+  }, [reachedDevices]);
+
+  const displayEdges = useMemo<Edge[]>(() => [...EDGES, ...attackEdges], [attackEdges]);
+
   return (
     <div style={{ position: 'absolute', inset: 0, background: '#0a0e17' }}>
       <ReactFlow
-        nodes={NODES}
-        edges={EDGES}
+        nodes={displayNodes}
+        edges={displayEdges}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.08 }}
@@ -502,6 +572,7 @@ export default function NetworkMap() {
             if (node.type === 'zoneBackground') return ((node.data as Record<string, unknown>).color as string) + '33';
             if (node.type === 'device') {
               const d = node.data as Record<string, unknown>;
+              if (d.reached) return REACHED_COLOR;
               return d.hasCVE ? CVE_COLOR : (d.color as string);
             }
             return '#1e293b';

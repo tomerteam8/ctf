@@ -1348,6 +1348,41 @@ export const sampleNodes: PentestNode[] = [
 // NETWORK MAP — infrastructure topology (independent of game tree)
 // =========================================================================
 
+// Maps attack-graph node IDs → the network-map device ID they correspond to.
+// Used by NetworkMap to highlight reached devices and draw attack-path edges.
+export const ATTACK_TO_NETWORK: Record<string, string> = {
+  // Perimeter
+  root:                'web-app',
+  web_app:             'web-app',
+  redis_cache:         'cache',
+  perimeter_db:        'database',
+  contact_form:        'web-app',
+  mail_unsubscribe:    'web-app',
+  user_registration:   'web-app',
+  account_profile:     'web-app',
+  order_history:       'web-app',
+  invoice_generator:   'web-app',
+  checkout:            'web-app',
+  password_change:     'web-app',
+  support_chat:        'web-app',
+  // Corporate
+  employee_portal:     'corp-portal',
+  inventory_management:'corp-portal',
+  supplier_import:     'corp-portal',
+  admin_dashboard:     'corp-portal',
+  order_processing:    'corp-portal',
+  employee_directory:  'corp-portal',
+  corp_helpdesk:       'helpdesk',
+  corp_wiki:           'wiki',
+  corp_printer:        'printer',
+  // Management
+  ping_microservice:   'microservice-check',
+  production_db_server:'mgmt-db',
+  mgmt_active_directory:'active-directory',
+  mgmt_grafana:        'monitoring',
+  mgmt_backups:        'backups',
+};
+
 export const networkDevices: NetworkDevice[] = [
   // Protection nodes
   { id: 'cloudflare',  label: 'Cloudflare WAF',    ip: 'CDN Edge',  ring: 6, zone: 'Internet',   color: '#f97316', iconType: 'waf', kind: 'firewall', rules: ['OWASP core rule set', 'DDoS mitigation', 'Bot & rate limiting'] },
