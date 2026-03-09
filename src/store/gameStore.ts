@@ -9,6 +9,7 @@ interface PromptMessage {
   content: string;
   success?: boolean;
   matchedActionId?: string | null;
+  logs?: string[];
 }
 
 interface GameState {
@@ -207,7 +208,13 @@ export const useGameStore = create<GameState>()(
       // Add assistant response to history (after asset guard so it reflects final success/failure)
       const historyWithResponse = [
         ...updatedHistory,
-        { role: 'assistant' as const, content: llmResponse.message, success: llmResponse.success, matchedActionId: llmResponse.matchedActionId },
+        {
+          role: 'assistant' as const,
+          content: llmResponse.message,
+          success: llmResponse.success,
+          matchedActionId: llmResponse.matchedActionId,
+          logs: llmResponse.logs?.length ? llmResponse.logs : undefined,
+        },
       ];
 
       // Build revealed assets from the action definition (not from GPT's response)

@@ -70,18 +70,72 @@ IMPORTANT RULES:
 - The revealedNodes and revealedAssets MUST come exactly from the matched test's definition (listed above). Do NOT invent new ones.
 - If success is false, revealedNodes and revealedAssets should be empty arrays.
 
-OUTPUT STYLE — write as a security assessment report, not raw tool output:
-- Use the language of penetration test findings and risk assessments
-- Structure output as assessment steps: "Testing...", "Finding:", "Result:", "Risk:"
-- Include relevant technical indicators (IP addresses, HTTP status codes, service versions) but frame them as evidence supporting findings, not as raw terminal dumps
-- For service discovery: list discovered services with their risk posture ("Port 5432 exposed — PostgreSQL accepting external connections")
-- For injection testing: describe the test approach and outcome ("Tested input validation on password field — backend accepts arbitrary values in user_type parameter")
-- For access control tests: describe what was accessible and what the business impact is
-- For failed tests: describe what was tested and why it didn't work ("Input sanitization prevents template injection — autoescaping is properly configured")
-- On success: emphasize the business risk and impact of the finding
-- On failure: emphasize the defensive control that prevented exploitation
-- Include the target URL/IP from the current target's baseUrl in the output
-- Do NOT use raw shell prompts ($), command-line syntax, or tool-specific output formatting. Write prose findings, not terminal logs.
+OUTPUT STYLE — produce authentic penetration testing terminal output using real open-source tools:
+
+logs field (10–18 lines): Write the $ shell commands and their raw stdout that a pentester would actually run. Pick the right tool for the job:
+
+DIRECTORY / ENDPOINT DISCOVERY
+  Use feroxbuster or ffuf. Show the command with wordlist, status filter, and target URL, then print the discovered paths (status code, size, words, path). Example:
+    $ feroxbuster -u https://shop.target.com -w /usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt -s 200,301,302,403 -x php,js,json --silent
+    200      GET   1423l   4821w  /api/v1/users
+    301      GET      0l      0w  /admin  ->  /admin/
+    200      GET    312l    987w  /api/v1/orders
+    403      GET     11l     21w  /api/internal
+
+WEB CRAWLING / SPIDERING
+  Use katana. Show the command, then print discovered URLs and forms:
+    $ katana -u https://shop.target.com -d 3 -jc -kf all -silent
+    https://shop.target.com/checkout
+    https://shop.target.com/api/v1/cart [POST] field=qty,product_id
+
+SERVICE / PORT DISCOVERY
+  Use nmap with -sV -sC. Show the full port table and relevant NSE script output.
+    $ nmap -sV -sC -p 80,443,5432,6379 203.0.113.10 --open
+
+PARAMETER / INPUT FUZZING
+  Use ffuf with FUZZ marker. Show the command and matching responses:
+    $ ffuf -u https://shop.target.com/api/v1/user?id=FUZZ -w /usr/share/seclists/Fuzzing/integers.txt -fc 404 -mc all
+
+SQL INJECTION
+  Use sqlmap for detection, then show the extracted payload and DB response rows:
+    $ sqlmap -u "https://shop.target.com/checkout" --data="user_type=guest" --dbms=postgresql --level=3 --risk=2 --batch
+  Or show a manual Python requests payload when sqlmap is overkill.
+
+SSRF / PATH TRAVERSAL
+  Show curl or a Python requests script with the crafted URL, then raw server response body.
+
+COMMAND INJECTION / RCE
+  Show the injected payload in context (curl -d or Python post), then raw shell output from the server.
+    $ curl -s -X POST http://10.30.1.10:9000/zabbix/scripts/ping -d 'host=127.0.0.1; id'
+    uid=998(zabbix) gid=998(zabbix) groups=998(zabbix)
+
+JWT / TOKEN ANALYSIS
+  Show jwt_tool or a Python decode snippet, then the decoded header and payload JSON.
+    $ jwt_tool eyJhbGci... -d
+  Or: python3 -c "import jwt; print(jwt.decode(token, options={'verify_signature':False}))"
+
+CREDENTIAL / AUTH TESTING
+  Show curl or hydra, then the server response (200 with session cookie, or 401 body).
+
+DATABASE ACCESS (psql / redis-cli)
+  Show the psql or redis-cli connection command, then query + result rows.
+    $ psql -h 203.0.113.10 -U postgres -d shop -c "SELECT id,email,password FROM users LIMIT 5;"
+
+CERTIFICATE / DOMAIN RECON
+  Show curl -I or openssl s_client, then the certificate fields.
+    $ openssl s_client -connect shop.target.com:443 </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
+
+CVE EXPLOITATION
+  Show the relevant PoC Python script invocation and raw response.
+
+RULES:
+- Always use exact IPs, ports, URLs, and service versions from the target node data above.
+- Use realistic flags, wordlists (/usr/share/seclists/...), and output formatting for each tool.
+- Flow: command → raw output → (if needed) follow-up command → final result.
+- On failure: show the tool output that indicates the block (WAF intercept, 401/403 body, filtered port, sanitized input).
+- Never invent tools. Stick to: feroxbuster, ffuf, katana, nmap, sqlmap, hydra, curl, jwt_tool, psql, redis-cli, openssl, nuclei, python3 requests.
+
+message field: One concise sentence summarising the finding and its risk/impact for a technical audience.
 
 Valid asset types: api_key, credentials, db_credentials, logic_flaw, token, certificate
 Valid action categories: recon, exploit, enumeration, analysis
