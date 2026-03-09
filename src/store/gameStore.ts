@@ -83,9 +83,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   addAsset: (asset) => {
-    set((state) => ({
-      assets: [...state.assets, asset],
-    }));
+    set((state) => {
+      const isDupe = state.assets.some(
+        (a) => a.type === asset.type && a.value === asset.value,
+      );
+      if (isDupe) return state;
+      return { assets: [...state.assets, asset] };
+    });
   },
 
   clearActionResult: () => set({ actionResult: null }),
