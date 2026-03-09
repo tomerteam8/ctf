@@ -171,6 +171,18 @@ export const sampleNodes: PentestNode[] = [
         category: 'exploit',
       },
       {
+        id: 'pg_connect',
+        name: 'Authenticate with Service Credentials',
+        hint: 'Do you have the service account credentials to connect directly?',
+        description: 'Use extracted service account credentials to authenticate to PostgreSQL and dump accessible tables from the shop database.',
+        requiredAssets: ['db_credentials'],
+        revealsNodes: [],
+        revealsAssets: [
+          { type: 'db_credentials', name: 'User Table Dump', value: '52,847 user records exfiltrated — emails + md5-hashed passwords from shop.public.users' },
+        ],
+        category: 'exploit',
+      },
+      {
         id: 'pg_version_enum',
         name: 'Check for Known Vulnerabilities',
         hint: 'Is this database version affected by any known CVEs?',
