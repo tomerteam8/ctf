@@ -92,3 +92,26 @@ Select difficulty from the dropdown in the header.
 npm run build      # TypeScript check + Vite production build → dist/
 npm run preview    # Preview the production build locally
 ```
+
+## Cloudflare Pages Deployment
+
+The repo has the Cloudflare GitHub app installed. Pushes to the production branch trigger automatic builds and deploys on Cloudflare Pages.
+
+### Cloudflare Pages settings
+
+| Setting | Value |
+|---------|-------|
+| Root directory | `ctf` |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Production branch | `dev` |
+
+### Environment variables (set in Cloudflare dashboard → Settings → Environment Variables → Production)
+
+| Variable | Value | Notes |
+|----------|-------|-------|
+| `VITE_LLM_PROVIDER` | `anthropic` | |
+| `VITE_ANTHROPIC_API_KEY` | your API key | Click "Encrypt" after entering |
+| `NODE_VERSION` | `20` | |
+
+When `VITE_ANTHROPIC_API_KEY` is set at build time, the app uses it automatically and hides the API key input from the UI. The key is baked into the JS bundle, so the deployed site should be protected by [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/applications/configure-apps/) to prevent unauthorized access.

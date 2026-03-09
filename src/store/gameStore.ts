@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { PentestNode, Asset, ActionResult, Difficulty } from '../data/types';
 import { sampleNodes } from '../data/gameData';
-import { sendPrompt, LLM_NEEDS_KEY, LLM_PROVIDER } from '../services/llm';
+import { sendPrompt, LLM_NEEDS_KEY, LLM_PROVIDER, LLM_HAS_BUILT_IN_KEY } from '../services/llm';
 
 interface PromptMessage {
   role: 'user' | 'assistant';
@@ -113,7 +113,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const node = state.nodes.get(nodeId);
     if (!node) return;
 
-    if (LLM_NEEDS_KEY && !state.apiKey) {
+    if (LLM_NEEDS_KEY && !LLM_HAS_BUILT_IN_KEY && !state.apiKey) {
       set({
         actionResult: {
           success: false,

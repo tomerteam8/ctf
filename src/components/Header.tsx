@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import type { Difficulty } from '../data/types';
-import { LLM_PROVIDER, LLM_NEEDS_KEY } from '../services/llm';
+import { LLM_PROVIDER, LLM_NEEDS_KEY, LLM_HAS_BUILT_IN_KEY } from '../services/llm';
 import type { AppView } from '../App';
 
 const st = {
@@ -116,13 +116,13 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
             style={{
               marginLeft: 8,
               background: 'none',
-              border: `1px solid ${(!LLM_NEEDS_KEY || apiKey) ? 'rgba(0,255,136,0.3)' : 'rgba(255,51,102,0.3)'}`,
+              border: `1px solid ${(!LLM_NEEDS_KEY || apiKey || LLM_HAS_BUILT_IN_KEY) ? 'rgba(0,255,136,0.3)' : 'rgba(255,51,102,0.3)'}`,
               borderRadius: 8,
               padding: '6px 8px',
               cursor: 'pointer',
               fontSize: 16,
               lineHeight: 1,
-              color: (!LLM_NEEDS_KEY || apiKey) ? '#00ff88' : '#ff3366',
+              color: (!LLM_NEEDS_KEY || apiKey || LLM_HAS_BUILT_IN_KEY) ? '#00ff88' : '#ff3366',
             }}
           >
             ⚙
@@ -149,11 +149,13 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
           >
             <h3 style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', marginBottom: 4 }}>Settings</h3>
             <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 16 }}>
-              {LLM_NEEDS_KEY
-                ? `Enter your ${LLM_PROVIDER === 'openai' ? 'OpenAI' : 'Anthropic'} API key to enable LLM-driven actions.`
-                : 'Using local Claude CLI — no API key needed.'}
+              {LLM_HAS_BUILT_IN_KEY
+                ? 'API key is pre-configured — no setup needed.'
+                : LLM_NEEDS_KEY
+                  ? `Enter your ${LLM_PROVIDER === 'openai' ? 'OpenAI' : 'Anthropic'} API key to enable LLM-driven actions.`
+                  : 'Using local Claude CLI — no API key needed.'}
             </p>
-            {LLM_NEEDS_KEY && (
+            {LLM_NEEDS_KEY && !LLM_HAS_BUILT_IN_KEY && (
               <>
                 <label style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                   {LLM_PROVIDER === 'openai' ? 'OpenAI' : 'Anthropic'} API Key

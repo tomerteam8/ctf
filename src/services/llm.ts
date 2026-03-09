@@ -5,7 +5,11 @@ export type LLMProvider = 'openai' | 'anthropic' | 'local';
 export const LLM_PROVIDER: LLMProvider =
   (import.meta.env.VITE_LLM_PROVIDER as LLMProvider) || 'local';
 
-export const LLM_NEEDS_KEY = LLM_PROVIDER !== 'local';
+/** API key baked in at build time (via CI secret) — takes precedence over user input */
+const BUILT_IN_API_KEY: string = import.meta.env.VITE_ANTHROPIC_API_KEY || '';
+
+export const LLM_HAS_BUILT_IN_KEY = BUILT_IN_API_KEY.length > 0;
+export const LLM_NEEDS_KEY = LLM_PROVIDER !== 'local' && !LLM_HAS_BUILT_IN_KEY;
 
 const LLM_MODEL: string =
   import.meta.env.VITE_LLM_MODEL ||
@@ -219,13 +223,15 @@ export async function sendPrompt(
   const systemPrompt = buildSystemPrompt(node, assets, difficulty);
   const messages = [...history, { role: 'user', content: prompt }];
 
+  const effectiveKey = BUILT_IN_API_KEY || apiKey;
+
   let raw: string | Record<string, unknown>;
   switch (LLM_PROVIDER) {
     case 'openai':
-      raw = await sendOpenAI(systemPrompt, messages, apiKey);
+      raw = await sendOpenAI(systemPrompt, messages, effectiveKey);
       break;
     case 'anthropic':
-      raw = await sendAnthropic(systemPrompt, messages, apiKey);
+      raw = await sendAnthropic(systemPrompt, messages, effectiveKey);
       break;
     case 'local':
       raw = await sendLocal(systemPrompt, messages);
