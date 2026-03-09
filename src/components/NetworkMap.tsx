@@ -8,7 +8,6 @@ import type { NetworkDevice } from '../data/types';
 
 const CVE_COLOR = '#fbbf24';        // amber-400 — faint yellow for CVE nodes
 const CVE_BORDER = '#fbbf2466';
-const CVE_BG = 'rgba(251,191,36,0.08)';
 const CVE_GLOW = '0 0 8px rgba(251,191,36,0.15)';
 
 function bgColor(hex: string, alpha = 0.06): string {
@@ -168,6 +167,7 @@ function ProtectionNode({ data }: NodeProps) {
       <Handle type="source" position={Position.Bottom} id="bottom-2"   style={{ ...H, left: '40%' }} />
       <Handle type="source" position={Position.Bottom} id="bottom-3"   style={{ ...H, left: '60%' }} />
       <Handle type="source" position={Position.Bottom} id="bottom-4"   style={{ ...H, left: '80%' }} />
+      <Handle type="source" position={Position.Bottom} id="bottom-5"   style={{ ...H, left: '92%' }} />
       <Handle type="target" position={Position.Bottom} id="bottom-tl"  style={{ ...H, left: '38%' }} />
       <Handle type="target" position={Position.Bottom} id="bottom-tr"  style={{ ...H, left: '62%' }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -244,8 +244,8 @@ const ZONES: ZoneDef[] = [
   },
   {
     id: 'zone-management', label: 'Management', subtitle: 'mgmt.target.com  ·  10.30.1.0/24',
-    color: '#a855f7', x: 185, y: 1280, ...zoneSize(4, 1),
-    deviceIds: ['active-directory', 'monitoring', 'backups', 'microservice-check'], cols: 4,
+    color: '#a855f7', x: 185, y: 1280, ...zoneSize(5, 1),
+    deviceIds: ['active-directory', 'monitoring', 'backups', 'microservice-check', 'mgmt-db'], cols: 5,
   },
 ];
 
@@ -282,7 +282,7 @@ for (const zone of ZONES) {
         x: zone.x + PAD_X + (i % zone.cols) * CELL_W,
         y: zone.y + PAD_Y + Math.floor(i / zone.cols) * CELL_H,
       },
-      data: toDeviceData(dev),
+      data: toDeviceData(dev) as unknown as Record<string, unknown>,
       draggable: true, selectable: false,
     });
   });
@@ -356,6 +356,7 @@ function edgeHandles(sourceId: string, targetId: string): { sourceHandle?: strin
   if (sourceId === 'pam-vault' && targetId === 'monitoring')        return { sourceHandle: 'bottom-2' };
   if (sourceId === 'pam-vault' && targetId === 'backups')           return { sourceHandle: 'bottom-3' };
   if (sourceId === 'pam-vault' && targetId === 'microservice-check') return { sourceHandle: 'bottom-4' };
+  if (sourceId === 'pam-vault' && targetId === 'mgmt-db')           return { sourceHandle: 'bottom-5' };
 
   return {};
 }

@@ -1283,7 +1283,8 @@ export const networkDevices: NetworkDevice[] = [
   { id: 'active-directory',  label: 'Active Directory',  ip: '10.30.1.10', port: '389',  ring: 0, zone: 'Management', color: '#a855f7', iconType: 'directory', kind: 'device', services: 'Windows AD (LDAP+Kerberos)' },
   { id: 'monitoring',        label: 'Grafana',           ip: '10.30.1.10', port: '3000', ring: 0, zone: 'Management', color: '#f97316', iconType: 'grafana',   kind: 'device', services: 'Grafana 8.2', hasCVE: true },
   { id: 'backups',           label: 'Backup Server',     ip: '10.30.1.10', port: '9090', ring: 0, zone: 'Management', color: '#00ff88', iconType: 'backup',    kind: 'device', services: 'Veeam' },
-  { id: 'microservice-check', label: 'Zabbix Server', ip: '10.30.1.10', port: '9000', ring: 0, zone: 'Management', color: '#22d3ee', iconType: 'heartbeat', kind: 'device', services: 'Zabbix 6.4.12', hasCVE: true },
+  { id: 'microservice-check', label: 'Zabbix Server',   ip: '10.30.1.10', port: '9000', ring: 0, zone: 'Management', color: '#22d3ee', iconType: 'heartbeat', kind: 'device', services: 'Zabbix 6.4.12', hasCVE: true },
+  { id: 'mgmt-db',            label: 'Mgmt Database',  ip: '10.30.1.10', port: '5432', ring: 0, zone: 'Management', color: '#a855f7', iconType: 'postgres',  kind: 'device', services: 'PostgreSQL (local trust)' },
 ];
 
 // =========================================================================
@@ -1320,4 +1321,5 @@ export const networkEdges: NetworkEdge[] = [
   { id: 'e-pam-grafana', source: 'pam-vault', target: 'monitoring' },
   { id: 'e-pam-backup',  source: 'pam-vault', target: 'backups' },
   { id: 'e-pam-health',  source: 'pam-vault', target: 'microservice-check' },
+  { id: 'e-pam-mgmtdb',  source: 'pam-vault', target: 'mgmt-db' },
 ];
