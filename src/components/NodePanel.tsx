@@ -59,8 +59,9 @@ export default function NodePanel() {
   const node = selectedNodeId ? nodes.get(selectedNodeId) : null;
 
   const [input, setInput] = useState('');
-  const [showServiceInfo, setShowServiceInfo] = useState(false);
+  const [showServiceInfo, setShowServiceInfo] = useState(true);
   const [showCveInfo, setShowCveInfo] = useState(false);
+  const [showHints, setShowHints] = useState(true);
   const [openLogs, setOpenLogs] = useState<Record<number, boolean>>({});
   const [hintWarning, setHintWarning] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -72,10 +73,11 @@ export default function NodePanel() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [history.length]);
 
-  // Collapse service info, CVE section, and logs when switching nodes
+  // Reset panels when switching nodes
   useEffect(() => {
-    setShowServiceInfo(false);
+    setShowServiceInfo(true);
     setShowCveInfo(false);
+    setShowHints(false);
     setOpenLogs({});
   }, [selectedNodeId]);
 
@@ -351,25 +353,48 @@ export default function NodePanel() {
               </div>
             )}
 
-            {/* Hint chips */}
-            {(() => {
-              const showHints =
-                difficulty === 'easy' ||
-                difficulty === 'normal';
-              // hard → never show
-              return showHints ? (
+            {/* Hint chips — collapsible, hidden on hard */}
+            {difficulty !== 'hard' && (() => {
+              const visibleHints = node.possibleActions
+                .filter((a) => a.showAsHint !== false)
+                .filter((a) => !(difficulty === 'easy' && (completedActions[node.id] || []).includes(a.id)));
+              if (visibleHints.length === 0) return null;
+              return (
                 <div style={{ marginBottom: 16 }}>
-                  <h3 style={{
-                    fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.15em',
-                    color: '#94a3b8', marginBottom: 8, fontWeight: 700,
-                  }}>
-                    Hints
-                  </h3>
-                  <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                    {node.possibleActions
-                      .filter((a) => a.showAsHint !== false)
-                      .filter((a) => !(difficulty === 'easy' && (completedActions[node.id] || []).includes(a.id)))
-                      .map((action) => (
+                  <button
+                    onClick={() => setShowHints(!showHints)}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px 12px',
+                      borderRadius: 8,
+                      border: '1px solid #2a3a5c',
+                      background: 'rgba(10,14,23,0.5)',
+                      color: '#94a3b8',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.15em',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span>Hints ({visibleHints.length})</span>
+                    <span style={{ fontSize: 10, transition: 'transform 0.2s', transform: showHints ? 'rotate(180deg)' : 'rotate(0)' }}>▼</span>
+                  </button>
+                  {showHints && (
+                    <div style={{
+                      marginTop: 4,
+                      padding: 10,
+                      borderRadius: '0 0 8px 8px',
+                      background: 'rgba(10,14,23,0.5)',
+                      border: '1px solid #2a3a5c',
+                      borderTop: 'none',
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                    }}>
+                      {visibleHints.map((action) => (
                         <ActionCard
                           key={action.id}
                           action={action}
@@ -377,9 +402,10 @@ export default function NodePanel() {
                           difficulty={difficulty}
                         />
                       ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
-              ) : null;
+              );
             })()}
 
             {/* Chat history */}
