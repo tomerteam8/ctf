@@ -7,6 +7,7 @@ interface PromptMessage {
   role: 'user' | 'assistant';
   content: string;
   success?: boolean;
+  matchedActionId?: string | null;
 }
 
 interface GameState {
@@ -24,6 +25,7 @@ interface GameState {
   capturedFlag: { id: string; value: string } | null;
   capturedFlags: string[];
   achievements: Achievement[];
+  completedActions: Record<string, string[]>;
 
   selectNode: (id: string | null) => void;
   executePrompt: (nodeId: string, prompt: string) => Promise<void>;
@@ -56,6 +58,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   capturedFlag: null,
   capturedFlags: [],
   achievements: [],
+  completedActions: {},
 
   selectNode: (id) => set({ selectedNodeId: id }),
 
@@ -195,7 +198,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       // Add assistant response to history (after asset guard so it reflects final success/failure)
       const historyWithResponse = [
         ...updatedHistory,
-        { role: 'assistant' as const, content: llmResponse.message, success: llmResponse.success },
+        { role: 'assistant' as const, content: llmResponse.message, success: llmResponse.success, matchedActionId: llmResponse.matchedActionId },
       ];
 
       // Build revealed assets from the action definition (not from GPT's response)
@@ -238,11 +241,30 @@ export const useGameStore = create<GameState>((set, get) => ({
           }
         });
 
-        // Mark current node as completed on success
-        if (llmResponse.success && matchedAction) {
+        // A "no-reward" action has no reveals — it's designed to fail.
+        // When matched (even on failure), count it as done so the hint disappears and counter decrements.
+        const isNoReward = matchedAction &&
+          !matchedAction.revealsNodes.length &&
+          !(matchedAction.revealsAssets?.length) &&
+          !(matchedAction.revealsAchievements?.length);
+        const shouldMarkDone = matchedAction && (llmResponse.success || isNoReward);
+
+        // Track completed actions per node
+        const completedActions = { ...s.completedActions };
+        if (shouldMarkDone) {
+          const existing = completedActions[nodeId] || [];
+          if (!existing.includes(matchedAction!.id)) {
+            completedActions[nodeId] = [...existing, matchedAction!.id];
+          }
+        }
+
+        // Mark node completed only when all actions have been executed
+        if (shouldMarkDone) {
           const currentNode = nodes.get(nodeId);
           if (currentNode) {
-            nodes.set(nodeId, { ...currentNode, status: 'completed' });
+            const doneCount = (completedActions[nodeId] || []).length;
+            const allDone = doneCount >= currentNode.possibleActions.length;
+            nodes.set(nodeId, { ...currentNode, status: allDone ? 'completed' : 'available' });
           }
         }
 
@@ -274,6 +296,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           nodes,
           assets: [...s.assets, ...revealedAssets],
           achievements: [...s.achievements, ...newAchievements],
+          completedActions,
           executingAction: false,
           executingPrompt: '',
           nodeFailures,

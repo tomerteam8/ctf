@@ -42,6 +42,7 @@ export default function NodePanel() {
   const setPendingPromptText = useGameStore((s) => s.setPendingPromptText);
   const difficulty = useGameStore((s) => s.difficulty);
   const nodeFailures = useGameStore((s) => s.nodeFailures);
+  const completedActions = useGameStore((s) => s.completedActions);
   const node = selectedNodeId ? nodes.get(selectedNodeId) : null;
 
   const [input, setInput] = useState('');
@@ -247,13 +248,16 @@ export default function NodePanel() {
                     Hints
                   </h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                    {node.possibleActions.filter((a) => a.showAsHint !== false).map((action) => (
-                      <ActionCard
-                        key={action.id}
-                        action={action}
-                        onClickHint={handleHintClick}
-                      />
-                    ))}
+                    {node.possibleActions
+                      .filter((a) => a.showAsHint !== false)
+                      .filter((a) => !(difficulty === 'easy' && (completedActions[node.id] || []).includes(a.id)))
+                      .map((action) => (
+                        <ActionCard
+                          key={action.id}
+                          action={action}
+                          onClickHint={handleHintClick}
+                        />
+                      ))}
                   </div>
                 </div>
               ) : null;
@@ -271,10 +275,18 @@ export default function NodePanel() {
                 {history.map((msg, i) => {
                   const isUser = msg.role === 'user';
                   const isFail = !isUser && msg.success === false;
-                  const bg = isUser ? 'rgba(0,240,255,0.1)' : isFail ? 'rgba(255,51,102,0.1)' : 'rgba(0,255,136,0.1)';
-                  const border = isUser ? 'rgba(0,240,255,0.2)' : isFail ? 'rgba(255,51,102,0.2)' : 'rgba(0,255,136,0.2)';
-                  const color = isUser ? '#00f0ff' : isFail ? '#ff3366' : '#00ff88';
-                  const label = isUser ? 'You' : isFail ? 'Failed' : 'Success';
+                  // "No-reward" actions are designed to fail — show yellow instead of red
+                  const matchedAction = !isUser && msg.matchedActionId
+                    ? node?.possibleActions.find((a) => a.id === msg.matchedActionId)
+                    : undefined;
+                  const isNoReward = matchedAction
+                    ? !matchedAction.revealsNodes.length && !(matchedAction.revealsAssets?.length) && !(matchedAction.revealsAchievements?.length)
+                    : false;
+                  const isExpectedFail = isFail && isNoReward;
+                  const bg = isUser ? 'rgba(0,240,255,0.1)' : isExpectedFail ? 'rgba(251,191,36,0.08)' : isFail ? 'rgba(255,51,102,0.1)' : 'rgba(0,255,136,0.1)';
+                  const border = isUser ? 'rgba(0,240,255,0.2)' : isExpectedFail ? 'rgba(251,191,36,0.2)' : isFail ? 'rgba(255,51,102,0.2)' : 'rgba(0,255,136,0.2)';
+                  const color = isUser ? '#00f0ff' : isExpectedFail ? '#fbbf24' : isFail ? '#ff3366' : '#00ff88';
+                  const label = isUser ? 'You' : isExpectedFail ? 'No Finding' : isFail ? 'Failed' : 'Success';
                   return (
                     <div
                       key={i}
