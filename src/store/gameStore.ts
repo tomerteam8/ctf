@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { PentestNode, Asset, Achievement, ActionResult, Difficulty } from '../data/types';
 import { sampleNodes } from '../data/gameData';
 import { sendPrompt, LLM_NEEDS_KEY, LLM_PROVIDER } from '../services/llm';
@@ -38,13 +39,21 @@ interface GameState {
   setDifficulty: (d: Difficulty) => void;
   clearFlag: () => void;
   revealAllNodes: () => void;
+  resetGame: () => void;
 }
 
-const initialNodes = new Map<string, PentestNode>();
-sampleNodes.forEach((node) => initialNodes.set(node.id, node));
+const buildInitialNodes = () => {
+  const m = new Map<string, PentestNode>();
+  sampleNodes.forEach((node) => m.set(node.id, node));
+  return m;
+};
 
-export const useGameStore = create<GameState>((set, get) => ({
-  nodes: initialNodes,
+const PERSIST_KEY = 'peter-game-progress';
+
+export const useGameStore = create<GameState>()(
+  persist(
+  (set, get) => ({
+  nodes: buildInitialNodes(),
   assets: [],
   selectedNodeId: null,
   actionResult: null,
@@ -332,4 +341,61 @@ export const useGameStore = create<GameState>((set, get) => ({
       }));
     }
   },
-}));
+
+  resetGame: () => {
+    const { apiKey, difficulty } = get();
+    set({
+      nodes: buildInitialNodes(),
+      assets: [],
+      achievements: [],
+      completedActions: {},
+      capturedFlags: [],
+      capturedFlag: null,
+      promptHistory: {},
+      nodeFailures: {},
+      selectedNodeId: null,
+      actionResult: null,
+      executingAction: false,
+      executingPrompt: '',
+      pendingPromptText: '',
+      apiKey,
+      difficulty,
+    });
+  },
+  }),
+  {
+    name: PERSIST_KEY,
+    partialize: (state) => ({
+      nodes: state.nodes,
+      assets: state.assets,
+      achievements: state.achievements,
+      completedActions: state.completedActions,
+      capturedFlags: state.capturedFlags,
+      capturedFlag: state.capturedFlag,
+      promptHistory: state.promptHistory,
+      nodeFailures: state.nodeFailures,
+    }),
+    storage: {
+      getItem: (name) => {
+        const str = localStorage.getItem(name);
+        if (!str) return null;
+        const data = JSON.parse(str);
+        if (data.state?.nodes) {
+          data.state.nodes = new Map(data.state.nodes);
+        }
+        return data;
+      },
+      setItem: (name, value) => {
+        const toStore = {
+          ...value,
+          state: {
+            ...value.state,
+            nodes: Array.from((value.state.nodes as Map<string, PentestNode>).entries()),
+          },
+        };
+        localStorage.setItem(name, JSON.stringify(toStore));
+      },
+      removeItem: (name) => localStorage.removeItem(name),
+    },
+  }
+));
