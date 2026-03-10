@@ -92,6 +92,7 @@ export interface Asset {
 
 export interface ActionResult {
   success: boolean;
+  guidance?: boolean;
   message: string;
   revealedNodes: string[];
   revealedAssets: Asset[];
@@ -102,6 +103,7 @@ export interface ActionResult {
 export interface LLMResponse {
   matchedActionId: string | null;
   success: boolean;
+  guidance?: boolean;
   logs: string[];
   message: string;
   revealedNodes: string[];

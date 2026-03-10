@@ -419,7 +419,8 @@ export default function NodePanel() {
                 </h3>
                 {history.map((msg, i) => {
                   const isUser = msg.role === 'user';
-                  const isFail = !isUser && msg.success === false;
+                  const isGuidance = !isUser && msg.guidance === true;
+                  const isFail = !isUser && !isGuidance && msg.success === false;
                   const matchedAction = !isUser && msg.matchedActionId
                     ? node?.possibleActions.find((a) => a.id === msg.matchedActionId)
                     : undefined;
@@ -427,10 +428,20 @@ export default function NodePanel() {
                     ? !matchedAction.revealsNodes.length && !(matchedAction.revealsAssets?.length) && !(matchedAction.revealsAchievements?.length)
                     : false;
                   const isExpectedFail = isFail && isNoReward;
-                  const bg = isUser ? 'rgba(0,240,255,0.1)' : isExpectedFail ? 'rgba(251,191,36,0.08)' : isFail ? 'rgba(255,51,102,0.1)' : 'rgba(0,255,136,0.1)';
-                  const border = isUser ? 'rgba(0,240,255,0.2)' : isExpectedFail ? 'rgba(251,191,36,0.2)' : isFail ? 'rgba(255,51,102,0.2)' : 'rgba(0,255,136,0.2)';
-                  const color = isUser ? '#00f0ff' : isExpectedFail ? '#fbbf24' : isFail ? '#ff3366' : '#00ff88';
-                  const label = isUser ? 'You' : isExpectedFail ? 'No Finding' : isFail ? 'Failed' : 'Success';
+                  const bg = isUser
+                    ? 'rgba(0,240,255,0.1)'
+                    : isGuidance ? 'rgba(168,85,247,0.08)'
+                    : isExpectedFail ? 'rgba(251,191,36,0.08)'
+                    : isFail ? 'rgba(255,51,102,0.1)'
+                    : 'rgba(0,255,136,0.1)';
+                  const border = isUser
+                    ? 'rgba(0,240,255,0.2)'
+                    : isGuidance ? 'rgba(168,85,247,0.25)'
+                    : isExpectedFail ? 'rgba(251,191,36,0.2)'
+                    : isFail ? 'rgba(255,51,102,0.2)'
+                    : 'rgba(0,255,136,0.2)';
+                  const color = isUser ? '#00f0ff' : isGuidance ? '#c084fc' : isExpectedFail ? '#fbbf24' : isFail ? '#ff3366' : '#00ff88';
+                  const label = isUser ? 'You' : isGuidance ? '◈ Guide' : isExpectedFail ? 'No Finding' : isFail ? 'Failed' : 'Success';
                   const hasLogs = !isUser && msg.logs && msg.logs.length > 0;
                   const logsOpen = openLogs[i] ?? false;
                   return (

@@ -63,10 +63,15 @@ Based on the user's prompt, determine:
 IMPORTANT RULES:
 - All tests are available to attempt. There are no locked tests.
 - ACTION MATCHING (Normal/Hard): Only match a test if the user's described approach aligns with what the test represents. Do NOT match loosely by category. For example, checking for exposed services is NOT the same as testing for hidden endpoints; testing for injection flaws is NOT the same as testing access controls. If the user describes a valid security concern that does not correspond to any listed test, set matchedActionId to null, set success to false, and show assessment output indicating the test found no exploitable weakness. On EASY difficulty, match by intent — e.g. "check what services are exposed" matches service discovery, "test if we can access internal systems" matches SSRF. The described intent must still align with what the test actually does.
-- QUESTIONS ARE NOT ACTIONS: If the user's prompt is only a question (e.g. "What services are running?", "Is the database exposed?") without describing any action or intent to test, set matchedActionId to null and success to false. This applies to ALL difficulty levels. The user must describe a test or investigation, not just ask a question.
+- GUIDANCE REQUESTS: If the user is asking for help, advice, what to try next, or how to proceed — keywords like "what should I do", "help me", "give me a hint", "what can I try", "I'm stuck", "what are my options", "what would you suggest", "guide me", "next steps" — set matchedActionId to null, success to false, guidance to true, logs to []. Then in message write tactical advice calibrated to difficulty:
+  * Easy: Be a cooperative mentor. List every remaining available action by name in plain language and explain exactly what it would do and why it is worth trying. For each, write one sentence saying what to type — e.g. "Try scanning for hidden endpoints by saying something like 'run feroxbuster on the app to find hidden directories'". Call out any gathered assets and tell the user exactly which target they apply to and how to use them. Leave nothing implicit — if there are 4 possible next moves, name all 4.
+  * Normal: suggest general attack categories without naming exact techniques. Point to suspicious service-info entries as starting points. Mention asset types (not values) if relevant.
+  * Hard: acknowledge the target only, tell them to re-read the service details and think about what each piece of information implies. No hints.
+  NEVER name a specific action ID string from the list above.
+- QUESTIONS THAT ARE NOT GUIDANCE: If the user asks a bare factual question about the target without intent to act (e.g. "Is the database exposed?", "What services are running?"), set matchedActionId to null, success to false, guidance to false, and in message briefly tell them to try running a test rather than just asking.
 - ASSET REQUIREMENTS (Normal/Hard only): If a test requires prior intelligence (assets), it only succeeds if the user explicitly references that intelligence in their prompt. If they try the test without mentioning the required asset, it should FAIL with output explaining why (e.g. "Access denied — no valid credentials provided", "This requires authenticated access"). On Easy difficulty, accept vague references to assets.
 - If no test matches the prompt, set matchedActionId to null, set success to false, and provide assessment output showing the approach was tried but yielded no exploitable findings. Include a brief message suggesting the user try a different angle.
-- ASSET HINTS ON FAILURE: When the user fails and they have gathered intelligence (assets) that could be useful at this target, subtly hint at it in the failure message. For example, mention "previously gathered intelligence may be relevant here" or reference the general type of finding without giving away the exact solution. Do NOT name the specific test to perform — just nudge toward using what they already have.
+- ASSET HINTS ON FAILURE: When the user fails and they have gathered intelligence (assets) that could be useful at this target: on Normal/Hard subtly hint at it ("previously gathered intelligence may be relevant here"). On Easy, be direct — name the asset type and tell the user to include it in their next attempt (e.g. "You have employee credentials — try referencing them explicitly in your command").
 - The revealedNodes and revealedAssets MUST come exactly from the matched test's definition (listed above). Do NOT invent new ones.
 - If success is false, revealedNodes and revealedAssets should be empty arrays.
 
@@ -144,11 +149,13 @@ Respond ONLY with JSON in this exact format (no markdown, no code fences, just r
 {
   "matchedActionId": "action_id_or_null",
   "success": true_or_false,
+  "guidance": false,
   "logs": ["line1", "line2", ...],
   "message": "Summary of what happened",
   "revealedNodes": ["node_id1", ...],
   "revealedAssets": [{"type": "asset_type", "name": "Asset Name", "value": "asset_value"}, ...]
-}${getDifficultyInstructions(difficulty)}`;
+}
+Set "guidance": true only for guidance/help requests (see GUIDANCE REQUESTS rule). For all action attempts set "guidance": false.${getDifficultyInstructions(difficulty)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -160,6 +167,7 @@ function parseResponse(content: string | Record<string, unknown>): LLMResponse {
   return {
     matchedActionId: parsed.matchedActionId ?? null,
     success: parsed.success ?? false,
+    guidance: parsed.guidance === true,
     logs: (parsed.logs ?? []).map((l: unknown) => typeof l === 'string' ? l : String(l ?? '')),
     message: parsed.message ?? '',
     revealedNodes: parsed.revealedNodes ?? [],

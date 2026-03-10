@@ -369,6 +369,7 @@ export default function ActionResultModal() {
   const selectedNodeId = useGameStore((s) => s.selectedNodeId);
   const [lines, setLines] = useState<string[]>([]);
   const [showResult, setShowResult] = useState(false);
+  const [countdown, setCountdown] = useState(5);
 
   const selectedNode = selectedNodeId ? nodes.get(selectedNodeId) : null;
   const nodeTitle = selectedNode?.title ?? 'target';
@@ -413,14 +414,21 @@ export default function ActionResultModal() {
     }
   }, [executingAction, actionResult, fallbackLines]);
 
+  // Auto-close after 5 seconds once the result card is visible
+  useEffect(() => {
+    if (!showResult || !actionResult) return;
+    setCountdown(5);
+    const tick = setInterval(() => {
+      setCountdown((c) => {
+        if (c <= 1) { clearInterval(tick); clearActionResult(); return 0; }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [showResult, actionResult, clearActionResult]);
+
   const show = executingAction || actionResult;
   const showingTerminal = executingAction || (actionResult && !showResult);
-
-  // Compute business-impact severity for the modal card styling
-  const cardImpact = actionResult?.success && actionResult.matchedActionId && showResult
-    ? BUSINESS_IMPACT_ACTIONS[actionResult.matchedActionId] ?? null
-    : null;
-  const cardImpactStyle = cardImpact ? IMPACT_STYLES[cardImpact] : null;
 
   return (
     <AnimatePresence>
@@ -437,15 +445,10 @@ export default function ActionResultModal() {
           <motion.div
             initial={{ scale: 0.8, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.8, y: 20 }}
             onClick={(e) => e.stopPropagation()}
-            style={{
-              background: cardImpactStyle?.bg ?? '#111827',
-              border: cardImpactStyle?.border ?? '1px solid #2a3a5c',
-              borderRadius: 12,
-              padding: 24, maxWidth: 560, width: '90%',
-            }}
+            style={{ maxWidth: 560, width: '90%' }}
           >
             {showingTerminal ? (
-              <div>
+              <div style={{ background: '#111827', border: '1px solid #2a3a5c', borderRadius: 12, padding: 24 }}>
                 <div style={{ display: 'flex', gap: 6, marginBottom: 16, alignItems: 'center' }}>
                   <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff3366' }} />
                   <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff9900' }} />
@@ -477,26 +480,50 @@ export default function ActionResultModal() {
                 </div>
               </div>
             ) : actionResult && showResult ? (() => {
-              const impact = actionResult.success && actionResult.matchedActionId
+              const isGuidance = actionResult.guidance === true;
+              const impact = !isGuidance && actionResult.success && actionResult.matchedActionId
                 ? BUSINESS_IMPACT_ACTIONS[actionResult.matchedActionId] ?? null
                 : null;
               const impactStyle = impact ? IMPACT_STYLES[impact] : null;
+
+              const cardBorder = isGuidance
+                ? '1px solid rgba(192,132,252,0.4)'
+                : impactStyle?.border ?? '1px solid #2a3a5c';
+              const cardBg = isGuidance
+                ? 'linear-gradient(180deg, rgba(168,85,247,0.1) 0%, #111827 40%)'
+                : impactStyle?.bg ?? '#111827';
+              const titleColor = isGuidance
+                ? '#c084fc'
+                : actionResult.success ? (impactStyle?.headerColor ?? '#00ff88') : '#ff3366';
+              const btnBg = isGuidance
+                ? 'rgba(168,85,247,0.15)'
+                : impactStyle?.buttonBg ?? 'rgba(0,240,255,0.15)';
+              const btnBorder = isGuidance
+                ? '1px solid rgba(192,132,252,0.3)'
+                : impactStyle?.buttonBorder ?? '1px solid rgba(0,240,255,0.3)';
+              const btnColor = isGuidance
+                ? '#c084fc'
+                : impactStyle?.buttonColor ?? '#00f0ff';
+
+              const icon = isGuidance ? '💡' : actionResult.success ? (impact ? '⚠️' : '✅') : '❌';
+              const title = isGuidance
+                ? '◈ GUIDANCE'
+                : actionResult.success ? (impact ? 'BREACH SUCCESSFUL' : 'ACTION SUCCESSFUL') : 'ACTION FAILED';
+
               return (
-              <div>
+              <div style={{ background: cardBg, border: cardBorder, borderRadius: 10, padding: 20 }}>
                 <motion.div
                   initial={{ scale: 0 }} animate={{ scale: 1 }}
                   transition={{ type: 'spring', stiffness: 400 }}
                   style={{ textAlign: 'center', fontSize: 40, marginBottom: 12 }}
                 >
-                  {actionResult.success ? (impact ? '⚠️' : '✅') : '❌'}
+                  {icon}
                 </motion.div>
                 <h3 style={{
                   textAlign: 'center', fontSize: 16, fontWeight: 700, marginBottom: 8,
-                  color: actionResult.success ? (impactStyle?.headerColor ?? '#00ff88') : '#ff3366',
+                  color: titleColor,
                 }}>
-                  {actionResult.success
-                    ? (impact ? 'BREACH SUCCESSFUL' : 'ACTION SUCCESSFUL')
-                    : 'ACTION FAILED'}
+                  {title}
                 </h3>
                 <p style={{ textAlign: 'center', fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>
                   {actionResult.message}
@@ -529,19 +556,22 @@ export default function ActionResultModal() {
                   </div>
                 )}
 
-                <button
-                  onClick={clearActionResult}
-                  style={{
-                    width: '100%', padding: '10px 0', borderRadius: 8,
-                    background: impactStyle?.buttonBg ?? 'rgba(0,240,255,0.15)',
-                    border: impactStyle?.buttonBorder ?? '1px solid rgba(0,240,255,0.3)',
-                    color: impactStyle?.buttonColor ?? '#00f0ff',
-                    fontWeight: 700, fontSize: 12,
-                    textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer',
-                  }}
-                >
-                  Continue
-                </button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button
+                    onClick={clearActionResult}
+                    style={{
+                      flex: 1, padding: '10px 0', borderRadius: 8,
+                      background: btnBg, border: btnBorder, color: btnColor,
+                      fontWeight: 700, fontSize: 12,
+                      textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer',
+                    }}
+                  >
+                    OK
+                  </button>
+                  <span style={{ fontSize: 11, color: '#475569', minWidth: 16, textAlign: 'center' }}>
+                    {countdown}
+                  </span>
+                </div>
               </div>
               );
             })() : null}

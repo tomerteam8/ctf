@@ -8,6 +8,7 @@ interface PromptMessage {
   role: 'user' | 'assistant';
   content: string;
   success?: boolean;
+  guidance?: boolean;
   matchedActionId?: string | null;
   logs?: string[];
 }
@@ -212,6 +213,7 @@ export const useGameStore = create<GameState>()(
           role: 'assistant' as const,
           content: llmResponse.message,
           success: llmResponse.success,
+          guidance: llmResponse.guidance,
           matchedActionId: llmResponse.matchedActionId,
           logs: llmResponse.logs?.length ? llmResponse.logs : undefined,
         },
@@ -321,6 +323,7 @@ export const useGameStore = create<GameState>()(
           promptHistory: { ...s.promptHistory, [nodeId]: historyWithResponse },
           actionResult: {
             success: llmResponse.success,
+            guidance: llmResponse.guidance,
             message: llmResponse.message,
             revealedNodes,
             revealedAssets,
