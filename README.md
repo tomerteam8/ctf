@@ -30,7 +30,7 @@ The app runs at **http://localhost:5173**.
 
 The game needs an LLM to evaluate your attack prompts. Choose one of three providers by setting `VITE_LLM_PROVIDER` in your `.env` file.
 
-### Option 1: Local Claude CLI (default)
+### Option 1: Local Claude CLI
 
 Uses the Claude Code CLI installed on your machine. No API key needed — authentication is handled by the CLI itself.
 
@@ -46,7 +46,7 @@ node server.mjs
 
 This starts a lightweight Express proxy on `http://127.0.0.1:3001` that spawns `claude -p` for each request. Logs are written to `server.log`.
 
-### Option 2: OpenAI API
+### Option 2: OpenAI API  (default)
 
 Calls the OpenAI API directly from the browser. Requires an API key.
 

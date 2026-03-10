@@ -3,7 +3,7 @@ import type { PentestNode, Asset, LLMResponse, Difficulty } from '../data/types'
 export type LLMProvider = 'openai' | 'anthropic' | 'local';
 
 export const LLM_PROVIDER: LLMProvider =
-  (import.meta.env.VITE_LLM_PROVIDER as LLMProvider) || 'local';
+  (import.meta.env.VITE_LLM_PROVIDER as LLMProvider) || 'openai';
 
 export const LLM_NEEDS_KEY = LLM_PROVIDER !== 'local';
 
