@@ -8,17 +8,36 @@ const assetIcons: Record<AssetType, string> = {
   logic_flaw: '\u{1F41B}', token: '\u{1F3AB}', certificate: '\u{1F4DC}',
 };
 
+type Tab = 'assets' | 'goals';
+
 export default function AssetInventory() {
   const assets = useGameStore((s) => s.assets);
+  const achievements = useGameStore((s) => s.achievements);
   const selectedNodeId = useGameStore((s) => s.selectedNodeId);
   const executingAction = useGameStore((s) => s.executingAction);
   const setPendingPromptText = useGameStore((s) => s.setPendingPromptText);
   const [isOpen, setIsOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>('assets');
 
   const grouped = assets.reduce<Record<string, typeof assets>>((acc, a) => {
     (acc[a.type] ||= []).push(a);
     return acc;
   }, {});
+
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1,
+    padding: '6px 0',
+    background: active ? 'rgba(0,240,255,0.12)' : 'transparent',
+    border: 'none',
+    borderBottom: active ? '2px solid #00f0ff' : '2px solid transparent',
+    color: active ? '#00f0ff' : '#94a3b8',
+    fontSize: 11,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.1em',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  });
 
   return (
     <div style={{ position: 'fixed', left: 0, top: 64, zIndex: 40 }}>
@@ -31,6 +50,9 @@ export default function AssetInventory() {
       >
         <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', fontWeight: 700 }}>Assets</div>
         <div style={{ fontSize: 18, fontWeight: 700, color: '#00ff88' }}>{assets.length}</div>
+        {achievements.length > 0 && (
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#fbbf24', marginTop: 2 }}>🏆 {achievements.length}</div>
+        )}
       </button>
 
       <AnimatePresence>
@@ -43,60 +65,95 @@ export default function AssetInventory() {
             style={{
               position: 'fixed', left: 0, top: 64, height: 'calc(100vh - 64px)', width: 300,
               background: 'rgba(17,24,39,0.97)', backdropFilter: 'blur(12px)',
-              borderRight: '1px solid #2a3a5c', overflowY: 'auto',
+              borderRight: '1px solid #2a3a5c', overflowY: 'auto', zIndex: 41,
             }}
           >
-            <div style={{ padding: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <span style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.15em', color: '#94a3b8', fontWeight: 700 }}>
-                  Asset Inventory
-                </span>
-                <button onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 16 }}>
-                  {'\u2715'}
-                </button>
-              </div>
+            {/* Header */}
+            <div style={{ padding: '12px 16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.15em', color: '#94a3b8', fontWeight: 700 }}>
+                {tab === 'assets' ? 'Asset Inventory' : 'Achievements'}
+              </span>
+              <button onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 16 }}>
+                {'\u2715'}
+              </button>
+            </div>
 
-              {assets.length === 0 ? (
-                <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>No assets yet. Execute actions to find them.</p>
-              ) : (
-                Object.entries(grouped).map(([type, items]) => (
-                  <div key={type} style={{ marginBottom: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                      <span>{assetIcons[type as AssetType] || '\u{1F4E6}'}</span>
-                      <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', fontWeight: 700 }}>
-                        {type.replace(/_/g, ' ')}
-                      </span>
-                      <span style={{ fontSize: 10, background: 'rgba(0,240,255,0.2)', color: '#00f0ff', padding: '1px 6px', borderRadius: 4 }}>
-                        {items.length}
-                      </span>
+            {/* Tabs */}
+            <div style={{ display: 'flex', margin: '10px 16px 0', borderBottom: '1px solid #2a3a5c' }}>
+              <button style={tabStyle(tab === 'assets')} onClick={() => setTab('assets')}>
+                Assets {assets.length > 0 && <span style={{ color: '#00ff88' }}>{assets.length}</span>}
+              </button>
+              <button style={tabStyle(tab === 'goals')} onClick={() => setTab('goals')}>
+                Goals {achievements.length > 0 && <span style={{ color: '#fbbf24' }}>{achievements.length}</span>}
+              </button>
+            </div>
+
+            <div style={{ padding: 16 }}>
+              {tab === 'assets' ? (
+                assets.length === 0 ? (
+                  <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>No assets yet. Execute actions to find them.</p>
+                ) : (
+                  Object.entries(grouped).map(([type, items]) => (
+                    <div key={type} style={{ marginBottom: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <span>{assetIcons[type as AssetType] || '\u{1F4E6}'}</span>
+                        <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', fontWeight: 700 }}>
+                          {type.replace(/_/g, ' ')}
+                        </span>
+                        <span style={{ fontSize: 10, background: 'rgba(0,240,255,0.2)', color: '#00f0ff', padding: '1px 6px', borderRadius: 4 }}>
+                          {items.length}
+                        </span>
+                      </div>
+                      {items.map((asset) => (
+                        <motion.div
+                          key={asset.id}
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            if (selectedNodeId && !executingAction) {
+                              setPendingPromptText(`Use ${asset.name}: ${asset.value}`);
+                            }
+                          }}
+                          title={executingAction ? 'Wait for action to complete' : selectedNodeId ? 'Click to use in prompt' : 'Select a node first'}
+                          style={{
+                            padding: 10, marginBottom: 6, borderRadius: 8,
+                            background: 'rgba(26,34,53,0.5)', border: '1px solid #2a3a5c',
+                            cursor: selectedNodeId && !executingAction ? 'pointer' : 'default',
+                            opacity: executingAction ? 0.5 : 1,
+                            transition: 'border-color 0.2s',
+                          }}
+                        >
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0' }}>{asset.name}</div>
+                          <div style={{ fontSize: 10, color: '#00ff88', fontFamily: 'monospace', marginTop: 4, wordBreak: 'break-all' }}>{asset.value}</div>
+                        </motion.div>
+                      ))}
                     </div>
-                    {items.map((asset) => (
-                      <motion.div
-                        key={asset.id}
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => {
-                          if (selectedNodeId && !executingAction) {
-                            setPendingPromptText(`Use ${asset.name}: ${asset.value}`);
-                          }
-                        }}
-                        title={executingAction ? 'Wait for action to complete' : selectedNodeId ? 'Click to use in prompt' : 'Select a node first'}
-                        style={{
-                          padding: 10, marginBottom: 6, borderRadius: 8,
-                          background: 'rgba(26,34,53,0.5)', border: '1px solid #2a3a5c',
-                          cursor: selectedNodeId && !executingAction ? 'pointer' : 'default',
-                          opacity: executingAction ? 0.5 : 1,
-                          transition: 'border-color 0.2s',
-                        }}
-                      >
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0' }}>{asset.name}</div>
-                        <div style={{ fontSize: 10, color: '#00ff88', fontFamily: 'monospace', marginTop: 4, wordBreak: 'break-all' }}>{asset.value}</div>
-                      </motion.div>
-                    ))}
-                  </div>
-                ))
+                  ))
+                )
+              ) : (
+                achievements.length === 0 ? (
+                  <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>No achievements yet. Complete attack actions to unlock them.</p>
+                ) : (
+                  achievements.map((ach) => (
+                    <motion.div
+                      key={ach.id}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      style={{
+                        padding: 10, marginBottom: 8, borderRadius: 8,
+                        background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.3)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <span style={{ fontSize: 14 }}>🏆</span>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24' }}>{ach.name}</div>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>{ach.description}</div>
+                    </motion.div>
+                  ))
+                )
               )}
             </div>
           </motion.div>

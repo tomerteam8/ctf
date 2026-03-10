@@ -4,6 +4,13 @@ export type NodeStatus = 'locked' | 'available' | 'completed';
 export type ActionCategory = 'recon' | 'exploit' | 'enumeration' | 'analysis';
 export type AssetType = 'api_key' | 'credentials' | 'db_credentials' | 'logic_flaw' | 'token' | 'certificate';
 
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  discoveredAt: string;
+}
+
 export interface Action {
   id: string;
   name: string;
@@ -11,12 +18,21 @@ export interface Action {
   requiredAssets: AssetType[];
   revealsNodes: string[];
   revealsAssets?: { type: AssetType; name: string; value: string }[];
+  revealsAchievements?: { name: string; description: string }[];
   category: ActionCategory;
   showAsHint?: boolean;
   hint?: string;
+  easyHint?: string;
 }
 
 export type InfoSeverity = 'critical' | 'high' | 'medium' | 'info';
+
+export interface CveDetail {
+  id: string;       // e.g. 'CVE-2024-23897'
+  cvss: number;     // CVSS base score
+  kev: boolean;     // In CISA KEV catalog
+  summary: string;  // Short description
+}
 
 export interface ServiceDetail {
   label: string;
@@ -35,6 +51,7 @@ export interface PentestNode {
   discovered: boolean;
   status: NodeStatus;
   serviceInfo?: ServiceDetail[];
+  cves?: CveDetail[];
   ring?: number;
   ip?: string;
   port?: string;
@@ -55,6 +72,7 @@ export interface NetworkDevice {
   rules?: string[];
   isTarget?: boolean;
   hasCVE?: boolean;
+  cves?: CveDetail[];
 }
 
 export interface NetworkEdge {
@@ -74,6 +92,7 @@ export interface Asset {
 
 export interface ActionResult {
   success: boolean;
+  guidance?: boolean;
   message: string;
   revealedNodes: string[];
   revealedAssets: Asset[];
@@ -84,6 +103,7 @@ export interface ActionResult {
 export interface LLMResponse {
   matchedActionId: string | null;
   success: boolean;
+  guidance?: boolean;
   logs: string[];
   message: string;
   revealedNodes: string[];

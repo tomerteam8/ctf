@@ -16,6 +16,20 @@ const severityColor: Record<InfoSeverity, string> = {
   info: '#94a3b8',
 };
 
+const cvssColor = (score: number) => {
+  if (score >= 9.0) return '#ff3366';
+  if (score >= 7.0) return '#ff6b35';
+  if (score >= 4.0) return '#ffc107';
+  return '#94a3b8';
+};
+
+const cvssLabel = (score: number) => {
+  if (score >= 9.0) return 'CRITICAL';
+  if (score >= 7.0) return 'HIGH';
+  if (score >= 4.0) return 'MEDIUM';
+  return 'LOW';
+};
+
 const zoneColor: Record<string, string> = {
   Perimeter: '#f59e0b',
   Corporate: '#3b82f6',
@@ -41,11 +55,14 @@ export default function NodePanel() {
   const pendingPromptText = useGameStore((s) => s.pendingPromptText);
   const setPendingPromptText = useGameStore((s) => s.setPendingPromptText);
   const difficulty = useGameStore((s) => s.difficulty);
-  const nodeFailures = useGameStore((s) => s.nodeFailures);
+  const completedActions = useGameStore((s) => s.completedActions);
   const node = selectedNodeId ? nodes.get(selectedNodeId) : null;
 
   const [input, setInput] = useState('');
-  const [showServiceInfo, setShowServiceInfo] = useState(false);
+  const [showServiceInfo, setShowServiceInfo] = useState(true);
+  const [showCveInfo, setShowCveInfo] = useState(false);
+  const [showHints, setShowHints] = useState(true);
+  const [openLogs, setOpenLogs] = useState<Record<number, boolean>>({});
   const [hintWarning, setHintWarning] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -56,9 +73,12 @@ export default function NodePanel() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [history.length]);
 
-  // Collapse service info when switching nodes
+  // Reset panels when switching nodes
   useEffect(() => {
-    setShowServiceInfo(false);
+    setShowServiceInfo(true);
+    setShowCveInfo(false);
+    setShowHints(false);
+    setOpenLogs({});
   }, [selectedNodeId]);
 
   // Pick up pending prompt text from asset clicks
@@ -232,31 +252,160 @@ export default function NodePanel() {
               </div>
             )}
 
-            {/* Hint chips */}
-            {(() => {
-              const showHints =
-                difficulty === 'easy' ||
-                (difficulty === 'normal' && (nodeFailures[node.id] || 0) >= 3);
-              // hard → never show
-              return showHints ? (
-                <div style={{ marginBottom: 16 }}>
-                  <h3 style={{
-                    fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.15em',
-                    color: '#94a3b8', marginBottom: 8, fontWeight: 700,
+            {/* CVE Details */}
+            {node.cves && node.cves.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <button
+                  onClick={() => setShowCveInfo(!showCveInfo)}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: '1px solid rgba(251,191,36,0.35)',
+                    background: 'rgba(251,191,36,0.07)',
+                    color: '#fbbf24',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.15em',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>⚠</span>
+                    <span>CVEs ({node.cves.length})</span>
+                  </span>
+                  <span style={{ fontSize: 10, transition: 'transform 0.2s', transform: showCveInfo ? 'rotate(180deg)' : 'rotate(0)' }}>
+                    ▼
+                  </span>
+                </button>
+                {showCveInfo && (
+                  <div style={{
+                    marginTop: 4,
+                    borderRadius: '0 0 8px 8px',
+                    background: 'rgba(10,14,23,0.5)',
+                    border: '1px solid rgba(251,191,36,0.2)',
+                    borderTop: 'none',
+                    overflow: 'hidden',
                   }}>
-                    Hints
-                  </h3>
-                  <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                    {node.possibleActions.filter((a) => a.showAsHint !== false).map((action) => (
-                      <ActionCard
-                        key={action.id}
-                        action={action}
-                        onClickHint={handleHintClick}
-                      />
-                    ))}
+                    {node.cves.map((cve, i) => {
+                      const cc = cvssColor(cve.cvss);
+                      const label = cvssLabel(cve.cvss);
+                      return (
+                        <div
+                          key={cve.id}
+                          style={{
+                            padding: '10px 12px',
+                            borderBottom: i < node.cves!.length - 1 ? '1px solid rgba(42,58,92,0.5)' : 'none',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                            <a
+                              href={`https://www.cvedetails.com/cve/${cve.id}/`}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                fontFamily: 'monospace', fontSize: 12, fontWeight: 700,
+                                color: cc, textDecoration: 'underline',
+                                textDecorationColor: cc + '55', flex: 1,
+                              }}
+                            >
+                              {cve.id}
+                            </a>
+                            <span style={{
+                              padding: '2px 6px', borderRadius: 4,
+                              background: cc + '22', border: `1px solid ${cc}44`,
+                              fontSize: 10, fontWeight: 700, color: cc,
+                              letterSpacing: '0.03em',
+                            }}>
+                              CVSS {cve.cvss}
+                            </span>
+                            <span style={{
+                              padding: '2px 6px', borderRadius: 4,
+                              background: cc + '18', border: `1px solid ${cc}33`,
+                              fontSize: 9, fontWeight: 700, color: cc,
+                              textTransform: 'uppercase', letterSpacing: '0.08em',
+                            }}>
+                              {label}
+                            </span>
+                            {cve.kev && (
+                              <span style={{
+                                padding: '2px 6px', borderRadius: 4,
+                                background: 'rgba(255,51,102,0.2)', border: '1px solid rgba(255,51,102,0.4)',
+                                fontSize: 9, fontWeight: 800, color: '#ff3366',
+                                letterSpacing: '0.08em',
+                              }}>
+                                KEV
+                              </span>
+                            )}
+                          </div>
+                          <p style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5, margin: 0 }}>
+                            {cve.summary}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* Hint chips — collapsible, hidden on hard */}
+            {difficulty !== 'hard' && (() => {
+              const visibleHints = node.possibleActions
+                .filter((a) => a.showAsHint !== false)
+                .filter((a) => !(difficulty === 'easy' && (completedActions[node.id] || []).includes(a.id)));
+              if (visibleHints.length === 0) return null;
+              return (
+                <div style={{ marginBottom: 16 }}>
+                  <button
+                    onClick={() => setShowHints(!showHints)}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px 12px',
+                      borderRadius: 8,
+                      border: '1px solid #2a3a5c',
+                      background: 'rgba(10,14,23,0.5)',
+                      color: '#94a3b8',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.15em',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span>Hints ({visibleHints.length})</span>
+                    <span style={{ fontSize: 10, transition: 'transform 0.2s', transform: showHints ? 'rotate(180deg)' : 'rotate(0)' }}>▼</span>
+                  </button>
+                  {showHints && (
+                    <div style={{
+                      marginTop: 4,
+                      padding: 10,
+                      borderRadius: '0 0 8px 8px',
+                      background: 'rgba(10,14,23,0.5)',
+                      border: '1px solid #2a3a5c',
+                      borderTop: 'none',
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                    }}>
+                      {visibleHints.map((action) => (
+                        <ActionCard
+                          key={action.id}
+                          action={action}
+                          onClickHint={handleHintClick}
+                          difficulty={difficulty}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ) : null;
+              );
             })()}
 
             {/* Chat history */}
@@ -270,29 +419,111 @@ export default function NodePanel() {
                 </h3>
                 {history.map((msg, i) => {
                   const isUser = msg.role === 'user';
-                  const isFail = !isUser && msg.success === false;
-                  const bg = isUser ? 'rgba(0,240,255,0.1)' : isFail ? 'rgba(255,51,102,0.1)' : 'rgba(0,255,136,0.1)';
-                  const border = isUser ? 'rgba(0,240,255,0.2)' : isFail ? 'rgba(255,51,102,0.2)' : 'rgba(0,255,136,0.2)';
-                  const color = isUser ? '#00f0ff' : isFail ? '#ff3366' : '#00ff88';
-                  const label = isUser ? 'You' : isFail ? 'Failed' : 'Success';
+                  const isGuidance = !isUser && msg.guidance === true;
+                  const isFail = !isUser && !isGuidance && msg.success === false;
+                  const matchedAction = !isUser && msg.matchedActionId
+                    ? node?.possibleActions.find((a) => a.id === msg.matchedActionId)
+                    : undefined;
+                  const isNoReward = matchedAction
+                    ? !matchedAction.revealsNodes.length && !(matchedAction.revealsAssets?.length) && !(matchedAction.revealsAchievements?.length)
+                    : false;
+                  const isExpectedFail = isFail && isNoReward;
+                  const bg = isUser
+                    ? 'rgba(0,240,255,0.1)'
+                    : isGuidance ? 'rgba(168,85,247,0.08)'
+                    : isExpectedFail ? 'rgba(251,191,36,0.08)'
+                    : isFail ? 'rgba(255,51,102,0.1)'
+                    : 'rgba(0,255,136,0.1)';
+                  const border = isUser
+                    ? 'rgba(0,240,255,0.2)'
+                    : isGuidance ? 'rgba(168,85,247,0.25)'
+                    : isExpectedFail ? 'rgba(251,191,36,0.2)'
+                    : isFail ? 'rgba(255,51,102,0.2)'
+                    : 'rgba(0,255,136,0.2)';
+                  const color = isUser ? '#00f0ff' : isGuidance ? '#c084fc' : isExpectedFail ? '#fbbf24' : isFail ? '#ff3366' : '#00ff88';
+                  const label = isUser ? 'You' : isGuidance ? '◈ Guide' : isExpectedFail ? 'No Finding' : isFail ? 'Failed' : 'Success';
+                  const hasLogs = !isUser && msg.logs && msg.logs.length > 0;
+                  const logsOpen = openLogs[i] ?? false;
                   return (
-                    <div
-                      key={i}
-                      style={{
-                        marginBottom: 8,
-                        padding: '8px 12px',
-                        borderRadius: 8,
-                        fontSize: 12,
-                        lineHeight: 1.5,
-                        background: bg,
-                        border: `1px solid ${border}`,
-                        color,
-                      }}
-                    >
-                      <span style={{ fontSize: 9, textTransform: 'uppercase', opacity: 0.6, letterSpacing: '0.1em' }}>
-                        {label}
-                      </span>
-                      <div style={{ marginTop: 2 }}>{msg.content}</div>
+                    <div key={i} style={{ marginBottom: 8 }}>
+                      <div
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: hasLogs ? '8px 8px 0 0' : 8,
+                          fontSize: 12,
+                          lineHeight: 1.5,
+                          background: bg,
+                          border: `1px solid ${border}`,
+                          borderBottom: hasLogs ? 'none' : undefined,
+                          color,
+                        }}
+                      >
+                        <span style={{ fontSize: 9, textTransform: 'uppercase', opacity: 0.6, letterSpacing: '0.1em' }}>
+                          {label}
+                        </span>
+                        <div style={{ marginTop: 2 }}>{msg.content}</div>
+                      </div>
+                      {hasLogs && (
+                        <>
+                          <button
+                            onClick={() => setOpenLogs((prev) => ({ ...prev, [i]: !logsOpen }))}
+                            style={{
+                              width: '100%',
+                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                              padding: '4px 12px',
+                              background: 'rgba(10,14,23,0.8)',
+                              border: `1px solid ${border}`,
+                              borderTop: '1px solid rgba(42,58,92,0.5)',
+                              borderBottom: logsOpen ? 'none' : `1px solid ${border}`,
+                              borderRadius: logsOpen ? 0 : '0 0 8px 8px',
+                              color: '#475569',
+                              fontSize: 9,
+                              fontFamily: 'monospace',
+                              fontWeight: 700,
+                              letterSpacing: '0.1em',
+                              textTransform: 'uppercase',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <span>⌨ tool output ({msg.logs!.length} lines)</span>
+                            <span style={{ transition: 'transform 0.15s', transform: logsOpen ? 'rotate(180deg)' : 'none', fontSize: 8 }}>▼</span>
+                          </button>
+                          {logsOpen && (
+                            <div
+                              style={{
+                                background: 'rgba(5,8,15,0.95)',
+                                border: `1px solid ${border}`,
+                                borderTop: 'none',
+                                borderRadius: '0 0 8px 8px',
+                                padding: '10px 12px',
+                                overflowX: 'auto',
+                              }}
+                            >
+                              <pre style={{
+                                margin: 0, fontSize: 10.5,
+                                fontFamily: "'Fira Code', 'Cascadia Code', 'Consolas', monospace",
+                                lineHeight: 1.65,
+                                color: '#a8b4c8',
+                                whiteSpace: 'pre',
+                              }}>
+                                {msg.logs!.map((line, li) => {
+                                  // colour-code key prefixes
+                                  let lineColor = '#a8b4c8';
+                                  if (/^(import |from |>>>|\$\s|#\s*HTTP|curl )/.test(line)) lineColor = '#00f0ff';
+                                  else if (/^(#|\/\/)/.test(line.trim())) lineColor = '#475569';
+                                  else if (/^(HTTP\/|< |> |\* )/.test(line)) lineColor = '#fbbf24';
+                                  else if (/^(uid=|gid=|groups=|\[|SELECT |INSERT |UPDATE |DELETE |CREATE |DROP )/.test(line.trim())) lineColor = '#ff9900';
+                                  else if (/\b(200|201|204)\b/.test(line)) lineColor = '#00ff88';
+                                  else if (/\b(4\d{2}|5\d{2})\b/.test(line)) lineColor = '#ff3366';
+                                  return (
+                                    <span key={li} style={{ color: lineColor, display: 'block' }}>{line}</span>
+                                  );
+                                })}
+                              </pre>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   );
                 })}

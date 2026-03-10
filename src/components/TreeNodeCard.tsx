@@ -6,8 +6,10 @@ const typeIcons: Record<string, string> = {
   database: '\u{1F5C4}', api: '\u26A1', network: '\u{1F5A7}',
 };
 
-const dotColor = (status: string) =>
-  status === 'compromised' ? '#ff3366' : status === 'locked' ? '#ff3366' : status === 'available' ? '#00f0ff' : '#00ff88';
+const dotColor = (status: string, inProgress: boolean) => {
+  if (inProgress) return '#fbbf24';
+  return status === 'compromised' ? '#ff3366' : status === 'locked' ? '#ff3366' : status === 'available' ? '#00f0ff' : '#00ff88';
+};
 
 const zoneColor: Record<string, string> = {
   Perimeter: '#f59e0b',
@@ -17,7 +19,8 @@ const zoneColor: Record<string, string> = {
   Management: '#a855f7',
 };
 
-function borderAndBg(status: string) {
+function borderAndBg(status: string, inProgress: boolean) {
+  if (inProgress) return { borderColor: 'rgba(251,191,36,0.5)', background: 'rgba(251,191,36,0.05)', animation: 'pulse-yellow 2s ease-in-out infinite' };
   if (status === 'locked') return { borderColor: 'rgba(255,51,102,0.5)', background: 'rgba(255,51,102,0.05)', animation: 'pulse-red 3s ease-in-out infinite' };
   if (status === 'available') return { borderColor: 'rgba(0,240,255,0.5)', background: 'rgba(0,240,255,0.05)', animation: 'pulse-cyan 2s ease-in-out infinite' };
   if (status === 'compromised') return { borderColor: 'rgba(255,51,102,0.8)', background: 'rgba(255,51,102,0.1)', animation: 'pulse-red 1.5s ease-in-out infinite' };
@@ -33,8 +36,11 @@ export default function TreeNodeCard({ nodeDatum, toggleNode }: CustomNodeElemen
   const baseUrl = attrs?.baseUrl ?? '';
   const zone = attrs?.zone ?? '';
   const actionCount = Number(attrs?.actionCount ?? 0);
+  const completedCount = Number(attrs?.completedCount ?? 0);
   const difficulty = attrs?.difficulty ?? 'normal';
   const completed = status === 'completed' || status === 'compromised';
+  const inProgress = !completed && completedCount > 0 && completedCount < actionCount;
+  const remaining = actionCount - completedCount;
 
   const isSelected = useGameStore((s) => s.selectedNodeId === nodeId);
   const selectNode = useGameStore((s) => s.selectNode);
@@ -43,7 +49,7 @@ export default function TreeNodeCard({ nodeDatum, toggleNode }: CustomNodeElemen
   const isCollapsed = !!(nodeDatum.__rd3t as { collapsed?: boolean })?.collapsed;
   const hiddenCount = nodeDatum.children?.length ?? 0;
 
-  const { borderColor, background, animation } = borderAndBg(status);
+  const { borderColor, background, animation } = borderAndBg(status, inProgress);
 
   const cardW = completed ? 150 : 187;
   const cardH = completed ? 70 : 110;
@@ -109,11 +115,11 @@ export default function TreeNodeCard({ nodeDatum, toggleNode }: CustomNodeElemen
             <div style={{
               position: 'absolute', top: -5, right: -5,
               width: completed ? 10 : 12, height: completed ? 10 : 12,
-              borderRadius: '50%', background: dotColor(status), border: '2px solid #0a0e17',
+              borderRadius: '50%', background: dotColor(status, inProgress), border: '2px solid #0a0e17',
             }} />
             {!completed && difficulty !== 'hard' && (
-              <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                {actionCount} action{actionCount !== 1 ? 's' : ''}
+              <div style={{ fontSize: 9, color: inProgress ? '#fbbf24' : '#94a3b8', marginTop: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                {inProgress ? `${remaining} left` : `${actionCount} action${actionCount !== 1 ? 's' : ''}`}
               </div>
             )}
           </div>

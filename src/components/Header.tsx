@@ -33,8 +33,10 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
   const difficulty = useGameStore((s) => s.difficulty);
   const setDifficulty = useGameStore((s) => s.setDifficulty);
   const [text, setText] = useState('');
+  const resetGame = useGameStore((s) => s.resetGame);
   const [showSettings, setShowSettings] = useState(false);
   const [keyInput, setKeyInput] = useState(apiKey);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   const discovered = Array.from(nodes.values()).filter((n) => n.discovered).length;
 
@@ -240,6 +242,52 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
               >
                 Cancel
               </button>
+            </div>
+
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #2a3a5c' }}>
+              {!confirmReset ? (
+                <button
+                  onClick={() => setConfirmReset(true)}
+                  style={{
+                    width: '100%', padding: '10px 0', borderRadius: 8,
+                    background: 'rgba(255,51,102,0.08)', border: '1px solid rgba(255,51,102,0.3)',
+                    color: '#ff3366', fontWeight: 700, fontSize: 12,
+                    textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer',
+                  }}
+                >
+                  ↺ Restart Game
+                </button>
+              ) : (
+                <div>
+                  <p style={{ fontSize: 11, color: '#ff3366', textAlign: 'center', marginBottom: 8 }}>
+                    This will erase all progress. Settings are kept.
+                  </p>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => setConfirmReset(false)}
+                      style={{
+                        flex: 1, padding: '10px 0', borderRadius: 8,
+                        background: 'rgba(17,24,39,0.8)', border: '1px solid #2a3a5c',
+                        color: '#94a3b8', fontWeight: 700, fontSize: 12,
+                        textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer',
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => { resetGame(); setConfirmReset(false); setShowSettings(false); }}
+                      style={{
+                        flex: 1, padding: '10px 0', borderRadius: 8,
+                        background: 'rgba(255,51,102,0.2)', border: '1px solid rgba(255,51,102,0.5)',
+                        color: '#ff3366', fontWeight: 700, fontSize: 12,
+                        textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer',
+                      }}
+                    >
+                      Confirm Reset
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

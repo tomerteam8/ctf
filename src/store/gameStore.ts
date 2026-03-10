@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import type { PentestNode, Asset, ActionResult, Difficulty } from '../data/types';
+import { persist } from 'zustand/middleware';
+import type { PentestNode, Asset, Achievement, ActionResult, Difficulty } from '../data/types';
 import { sampleNodes } from '../data/gameData';
 import { sendPrompt, LLM_NEEDS_KEY, LLM_PROVIDER } from '../services/llm';
 
@@ -7,6 +8,9 @@ interface PromptMessage {
   role: 'user' | 'assistant';
   content: string;
   success?: boolean;
+  guidance?: boolean;
+  matchedActionId?: string | null;
+  logs?: string[];
 }
 
 interface GameState {
@@ -23,6 +27,8 @@ interface GameState {
   nodeFailures: Record<string, number>;
   capturedFlag: { id: string; value: string } | null;
   capturedFlags: string[];
+  achievements: Achievement[];
+  completedActions: Record<string, string[]>;
 
   selectNode: (id: string | null) => void;
   executePrompt: (nodeId: string, prompt: string) => Promise<void>;
@@ -35,13 +41,21 @@ interface GameState {
   setDifficulty: (d: Difficulty) => void;
   clearFlag: () => void;
   revealAllNodes: () => void;
+  resetGame: () => void;
 }
 
-const initialNodes = new Map<string, PentestNode>();
-sampleNodes.forEach((node) => initialNodes.set(node.id, node));
+const buildInitialNodes = () => {
+  const m = new Map<string, PentestNode>();
+  sampleNodes.forEach((node) => m.set(node.id, node));
+  return m;
+};
 
-export const useGameStore = create<GameState>((set, get) => ({
-  nodes: initialNodes,
+const PERSIST_KEY = 'peter-game-progress';
+
+export const useGameStore = create<GameState>()(
+  persist(
+  (set, get) => ({
+  nodes: buildInitialNodes(),
   assets: [],
   selectedNodeId: null,
   actionResult: null,
@@ -54,6 +68,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   nodeFailures: {},
   capturedFlag: null,
   capturedFlags: [],
+  achievements: [],
+  completedActions: {},
 
   selectNode: (id) => set({ selectedNodeId: id }),
 
@@ -83,9 +99,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   addAsset: (asset) => {
-    set((state) => ({
-      assets: [...state.assets, asset],
-    }));
+    set((state) => {
+      const isDupe = state.assets.some(
+        (a) => a.type === asset.type && a.value === asset.value,
+      );
+      if (isDupe) return state;
+      return { assets: [...state.assets, asset] };
+    });
   },
 
   clearActionResult: () => set({ actionResult: null }),
@@ -149,6 +169,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         ? node.possibleActions.find((a) => a.id === llmResponse.matchedActionId)
         : null;
 
+
       // Server-side asset guard: on normal/hard, enforce that required assets
       // are referenced in the prompt. GPT alone can't be trusted for this.
       if (
@@ -188,7 +209,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       // Add assistant response to history (after asset guard so it reflects final success/failure)
       const historyWithResponse = [
         ...updatedHistory,
-        { role: 'assistant' as const, content: llmResponse.message, success: llmResponse.success },
+        {
+          role: 'assistant' as const,
+          content: llmResponse.message,
+          success: llmResponse.success,
+          guidance: llmResponse.guidance,
+          matchedActionId: llmResponse.matchedActionId,
+          logs: llmResponse.logs?.length ? llmResponse.logs : undefined,
+        },
       ];
 
       // Build revealed assets from the action definition (not from GPT's response)
@@ -203,6 +231,18 @@ export const useGameStore = create<GameState>((set, get) => ({
               discoveredBy: matchedAction.id,
             }))
           : [];
+
+      // Build revealed achievements from the action definition
+      const revealedAchievements: Achievement[] =
+        llmResponse.success && matchedAction
+          ? (matchedAction.revealsAchievements || []).map((a, i) => ({
+              id: `${matchedAction.id}_ach_${i}_${Date.now()}`,
+              name: a.name,
+              description: a.description,
+              discoveredAt: nodeId,
+            }))
+          : [];
+
 
       // Use the action's revealsNodes (not GPT's) for game state integrity
       const revealedNodes =
@@ -219,11 +259,30 @@ export const useGameStore = create<GameState>((set, get) => ({
           }
         });
 
-        // Mark current node as completed on success
-        if (llmResponse.success && matchedAction) {
+        // A "no-reward" action has no reveals — it's designed to fail.
+        // When matched (even on failure), count it as done so the hint disappears and counter decrements.
+        const isNoReward = matchedAction &&
+          !matchedAction.revealsNodes.length &&
+          !(matchedAction.revealsAssets?.length) &&
+          !(matchedAction.revealsAchievements?.length);
+        const shouldMarkDone = matchedAction && (llmResponse.success || isNoReward);
+
+        // Track completed actions per node
+        const completedActions = { ...s.completedActions };
+        if (shouldMarkDone) {
+          const existing = completedActions[nodeId] || [];
+          if (!existing.includes(matchedAction!.id)) {
+            completedActions[nodeId] = [...existing, matchedAction!.id];
+          }
+        }
+
+        // Mark node completed only when all actions have been executed
+        if (shouldMarkDone) {
           const currentNode = nodes.get(nodeId);
           if (currentNode) {
-            nodes.set(nodeId, { ...currentNode, status: 'completed' });
+            const doneCount = (completedActions[nodeId] || []).length;
+            const allDone = doneCount >= currentNode.possibleActions.length;
+            nodes.set(nodeId, { ...currentNode, status: allDone ? 'completed' : 'available' });
           }
         }
 
@@ -246,9 +305,16 @@ export const useGameStore = create<GameState>((set, get) => ({
           ? [...s.capturedFlags, flag.id]
           : s.capturedFlags;
 
+        // Merge achievements (deduplicate by name)
+        const newAchievements = revealedAchievements.filter(
+          (a) => !s.achievements.some((e) => e.name === a.name),
+        );
+
         return {
           nodes,
           assets: [...s.assets, ...revealedAssets],
+          achievements: [...s.achievements, ...newAchievements],
+          completedActions,
           executingAction: false,
           executingPrompt: '',
           nodeFailures,
@@ -257,6 +323,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           promptHistory: { ...s.promptHistory, [nodeId]: historyWithResponse },
           actionResult: {
             success: llmResponse.success,
+            guidance: llmResponse.guidance,
             message: llmResponse.message,
             revealedNodes,
             revealedAssets,
@@ -284,4 +351,61 @@ export const useGameStore = create<GameState>((set, get) => ({
       }));
     }
   },
-}));
+
+  resetGame: () => {
+    const { apiKey, difficulty } = get();
+    set({
+      nodes: buildInitialNodes(),
+      assets: [],
+      achievements: [],
+      completedActions: {},
+      capturedFlags: [],
+      capturedFlag: null,
+      promptHistory: {},
+      nodeFailures: {},
+      selectedNodeId: null,
+      actionResult: null,
+      executingAction: false,
+      executingPrompt: '',
+      pendingPromptText: '',
+      apiKey,
+      difficulty,
+    });
+  },
+  }),
+  {
+    name: PERSIST_KEY,
+    partialize: (state) => ({
+      nodes: state.nodes,
+      assets: state.assets,
+      achievements: state.achievements,
+      completedActions: state.completedActions,
+      capturedFlags: state.capturedFlags,
+      capturedFlag: state.capturedFlag,
+      promptHistory: state.promptHistory,
+      nodeFailures: state.nodeFailures,
+    }),
+    storage: {
+      getItem: (name) => {
+        const str = localStorage.getItem(name);
+        if (!str) return null;
+        const data = JSON.parse(str);
+        if (data.state?.nodes) {
+          data.state.nodes = new Map(data.state.nodes);
+        }
+        return data;
+      },
+      setItem: (name, value) => {
+        const toStore = {
+          ...value,
+          state: {
+            ...value.state,
+            nodes: Array.from((value.state.nodes as Map<string, PentestNode>).entries()),
+          },
+        };
+        localStorage.setItem(name, JSON.stringify(toStore));
+      },
+      removeItem: (name) => localStorage.removeItem(name),
+    },
+  }
+));

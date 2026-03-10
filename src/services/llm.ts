@@ -3,7 +3,7 @@ import type { PentestNode, Asset, LLMResponse, Difficulty } from '../data/types'
 export type LLMProvider = 'openai' | 'anthropic' | 'local';
 
 export const LLM_PROVIDER: LLMProvider =
-  (import.meta.env.VITE_LLM_PROVIDER as LLMProvider) || 'local';
+  (import.meta.env.VITE_LLM_PROVIDER as LLMProvider) || 'openai';
 
 export const LLM_NEEDS_KEY = LLM_PROVIDER !== 'local';
 
@@ -63,25 +63,84 @@ Based on the user's prompt, determine:
 IMPORTANT RULES:
 - All tests are available to attempt. There are no locked tests.
 - ACTION MATCHING (Normal/Hard): Only match a test if the user's described approach aligns with what the test represents. Do NOT match loosely by category. For example, checking for exposed services is NOT the same as testing for hidden endpoints; testing for injection flaws is NOT the same as testing access controls. If the user describes a valid security concern that does not correspond to any listed test, set matchedActionId to null, set success to false, and show assessment output indicating the test found no exploitable weakness. On EASY difficulty, match by intent — e.g. "check what services are exposed" matches service discovery, "test if we can access internal systems" matches SSRF. The described intent must still align with what the test actually does.
-- QUESTIONS ARE NOT ACTIONS: If the user's prompt is only a question (e.g. "What services are running?", "Is the database exposed?") without describing any action or intent to test, set matchedActionId to null and success to false. This applies to ALL difficulty levels. The user must describe a test or investigation, not just ask a question.
+- GUIDANCE REQUESTS: If the user is asking for help, advice, what to try next, or how to proceed — keywords like "what should I do", "help me", "give me a hint", "what can I try", "I'm stuck", "what are my options", "what would you suggest", "guide me", "next steps" — set matchedActionId to null, success to false, guidance to true, logs to []. Then in message write tactical advice calibrated to difficulty:
+  * Easy: Be a cooperative mentor. List every remaining available action by name in plain language and explain exactly what it would do and why it is worth trying. For each, write one sentence saying what to type — e.g. "Try scanning for hidden endpoints by saying something like 'run feroxbuster on the app to find hidden directories'". Call out any gathered assets and tell the user exactly which target they apply to and how to use them. Leave nothing implicit — if there are 4 possible next moves, name all 4.
+  * Normal: suggest general attack categories without naming exact techniques. Point to suspicious service-info entries as starting points. Mention asset types (not values) if relevant.
+  * Hard: acknowledge the target only, tell them to re-read the service details and think about what each piece of information implies. No hints.
+  NEVER name a specific action ID string from the list above.
+- QUESTIONS THAT ARE NOT GUIDANCE: If the user asks a bare factual question about the target without intent to act (e.g. "Is the database exposed?", "What services are running?"), set matchedActionId to null, success to false, guidance to false, and in message briefly tell them to try running a test rather than just asking.
 - ASSET REQUIREMENTS (Normal/Hard only): If a test requires prior intelligence (assets), it only succeeds if the user explicitly references that intelligence in their prompt. If they try the test without mentioning the required asset, it should FAIL with output explaining why (e.g. "Access denied — no valid credentials provided", "This requires authenticated access"). On Easy difficulty, accept vague references to assets.
 - If no test matches the prompt, set matchedActionId to null, set success to false, and provide assessment output showing the approach was tried but yielded no exploitable findings. Include a brief message suggesting the user try a different angle.
-- ASSET HINTS ON FAILURE: When the user fails and they have gathered intelligence (assets) that could be useful at this target, subtly hint at it in the failure message. For example, mention "previously gathered intelligence may be relevant here" or reference the general type of finding without giving away the exact solution. Do NOT name the specific test to perform — just nudge toward using what they already have.
+- ASSET HINTS ON FAILURE: When the user fails and they have gathered intelligence (assets) that could be useful at this target: on Normal/Hard subtly hint at it ("previously gathered intelligence may be relevant here"). On Easy, be direct — name the asset type and tell the user to include it in their next attempt (e.g. "You have employee credentials — try referencing them explicitly in your command").
 - The revealedNodes and revealedAssets MUST come exactly from the matched test's definition (listed above). Do NOT invent new ones.
 - If success is false, revealedNodes and revealedAssets should be empty arrays.
 
-OUTPUT STYLE — write as a security assessment report, not raw tool output:
-- Use the language of penetration test findings and risk assessments
-- Structure output as assessment steps: "Testing...", "Finding:", "Result:", "Risk:"
-- Include relevant technical indicators (IP addresses, HTTP status codes, service versions) but frame them as evidence supporting findings, not as raw terminal dumps
-- For service discovery: list discovered services with their risk posture ("Port 5432 exposed — PostgreSQL accepting external connections")
-- For injection testing: describe the test approach and outcome ("Tested input validation on password field — backend accepts arbitrary values in user_type parameter")
-- For access control tests: describe what was accessible and what the business impact is
-- For failed tests: describe what was tested and why it didn't work ("Input sanitization prevents template injection — autoescaping is properly configured")
-- On success: emphasize the business risk and impact of the finding
-- On failure: emphasize the defensive control that prevented exploitation
-- Include the target URL/IP from the current target's baseUrl in the output
-- Do NOT use raw shell prompts ($), command-line syntax, or tool-specific output formatting. Write prose findings, not terminal logs.
+OUTPUT STYLE — produce authentic penetration testing terminal output using real open-source tools:
+
+logs field (10–18 lines): Write the $ shell commands and their raw stdout that a pentester would actually run. Pick the right tool for the job:
+
+DIRECTORY / ENDPOINT DISCOVERY
+  Use feroxbuster or ffuf. Show the command with wordlist, status filter, and target URL, then print the discovered paths (status code, size, words, path). Example:
+    $ feroxbuster -u https://shop.target.com -w /usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt -s 200,301,302,403 -x php,js,json --silent
+    200      GET   1423l   4821w  /api/v1/users
+    301      GET      0l      0w  /admin  ->  /admin/
+    200      GET    312l    987w  /api/v1/orders
+    403      GET     11l     21w  /api/internal
+
+WEB CRAWLING / SPIDERING
+  Use katana. Show the command, then print discovered URLs and forms:
+    $ katana -u https://shop.target.com -d 3 -jc -kf all -silent
+    https://shop.target.com/checkout
+    https://shop.target.com/api/v1/cart [POST] field=qty,product_id
+
+SERVICE / PORT DISCOVERY
+  Use nmap with -sV -sC. Show the full port table and relevant NSE script output.
+    $ nmap -sV -sC -p 80,443,5432,6379 203.0.113.10 --open
+
+PARAMETER / INPUT FUZZING
+  Use ffuf with FUZZ marker. Show the command and matching responses:
+    $ ffuf -u https://shop.target.com/api/v1/user?id=FUZZ -w /usr/share/seclists/Fuzzing/integers.txt -fc 404 -mc all
+
+SQL INJECTION
+  Use sqlmap for detection, then show the extracted payload and DB response rows:
+    $ sqlmap -u "https://shop.target.com/checkout" --data="user_type=guest" --dbms=postgresql --level=3 --risk=2 --batch
+  Or show a manual Python requests payload when sqlmap is overkill.
+
+SSRF / PATH TRAVERSAL
+  Show curl or a Python requests script with the crafted URL, then raw server response body.
+
+COMMAND INJECTION / RCE
+  Show the injected payload in context (curl -d or Python post), then raw shell output from the server.
+    $ curl -s -X POST http://10.30.1.10:9000/zabbix/scripts/ping -d 'host=127.0.0.1; id'
+    uid=998(zabbix) gid=998(zabbix) groups=998(zabbix)
+
+JWT / TOKEN ANALYSIS
+  Show jwt_tool or a Python decode snippet, then the decoded header and payload JSON.
+    $ jwt_tool eyJhbGci... -d
+  Or: python3 -c "import jwt; print(jwt.decode(token, options={'verify_signature':False}))"
+
+CREDENTIAL / AUTH TESTING
+  Show curl or hydra, then the server response (200 with session cookie, or 401 body).
+
+DATABASE ACCESS (psql / redis-cli)
+  Show the psql or redis-cli connection command, then query + result rows.
+    $ psql -h 203.0.113.10 -U postgres -d shop -c "SELECT id,email,password FROM users LIMIT 5;"
+
+CERTIFICATE / DOMAIN RECON
+  Show curl -I or openssl s_client, then the certificate fields.
+    $ openssl s_client -connect shop.target.com:443 </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
+
+CVE EXPLOITATION
+  Show the relevant PoC Python script invocation and raw response.
+
+RULES:
+- Always use exact IPs, ports, URLs, and service versions from the target node data above.
+- Use realistic flags, wordlists (/usr/share/seclists/...), and output formatting for each tool.
+- Flow: command → raw output → (if needed) follow-up command → final result.
+- On failure: show the tool output that indicates the block (WAF intercept, 401/403 body, filtered port, sanitized input).
+- Never invent tools. Stick to: feroxbuster, ffuf, katana, nmap, sqlmap, hydra, curl, jwt_tool, psql, redis-cli, openssl, nuclei, python3 requests.
+
+message field: One concise sentence summarising the finding and its risk/impact for a technical audience.
 
 Valid asset types: api_key, credentials, db_credentials, logic_flaw, token, certificate
 Valid action categories: recon, exploit, enumeration, analysis
@@ -90,11 +149,13 @@ Respond ONLY with JSON in this exact format (no markdown, no code fences, just r
 {
   "matchedActionId": "action_id_or_null",
   "success": true_or_false,
+  "guidance": false,
   "logs": ["line1", "line2", ...],
   "message": "Summary of what happened",
   "revealedNodes": ["node_id1", ...],
   "revealedAssets": [{"type": "asset_type", "name": "Asset Name", "value": "asset_value"}, ...]
-}${getDifficultyInstructions(difficulty)}`;
+}
+Set "guidance": true only for guidance/help requests (see GUIDANCE REQUESTS rule). For all action attempts set "guidance": false.${getDifficultyInstructions(difficulty)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -106,6 +167,7 @@ function parseResponse(content: string | Record<string, unknown>): LLMResponse {
   return {
     matchedActionId: parsed.matchedActionId ?? null,
     success: parsed.success ?? false,
+    guidance: parsed.guidance === true,
     logs: (parsed.logs ?? []).map((l: unknown) => typeof l === 'string' ? l : String(l ?? '')),
     message: parsed.message ?? '',
     revealedNodes: parsed.revealedNodes ?? [],

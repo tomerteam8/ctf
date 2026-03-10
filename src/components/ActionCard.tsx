@@ -8,12 +8,16 @@ const catColor: Record<string, string> = {
 export default function ActionCard({
   action,
   onClickHint,
+  difficulty,
 }: {
   action: Action;
   onClickHint: (text: string) => void;
+  difficulty?: string;
 }) {
   const color = catColor[action.category] || '#00f0ff';
-  const hintText = action.hint || action.name;
+  const hintText = difficulty === 'easy'
+    ? (action.easyHint || action.hint || action.name)
+    : (action.hint || action.name);
 
   return (
     <motion.button
