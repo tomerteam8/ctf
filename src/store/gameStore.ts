@@ -206,6 +206,28 @@ export const useGameStore = create<GameState>()(
         }
       }
 
+      // Success promotion: if the LLM matched an action but returned success=false,
+      // override to success when all asset requirements are satisfied. This prevents
+      // the LLM from contradicting itself by matching an action yet generating failure output.
+      if (matchedAction && !llmResponse.success && !llmResponse.guidance) {
+        const promptLower = prompt.toLowerCase();
+        const requirementsMet =
+          matchedAction.requiredAssets.length === 0 ||
+          matchedAction.requiredAssets.every((requiredType) => {
+            const ownedAssets = state.assets.filter((a) => a.type === requiredType);
+            if (ownedAssets.length === 0) return false;
+            if (state.difficulty === 'easy') return true;
+            return ownedAssets.some(
+              (a) =>
+                promptLower.includes(a.name.toLowerCase()) ||
+                promptLower.includes(a.value.toLowerCase()),
+            );
+          });
+        if (requirementsMet) {
+          llmResponse.success = true;
+        }
+      }
+
       // Add assistant response to history (after asset guard so it reflects final success/failure)
       const historyWithResponse = [
         ...updatedHistory,

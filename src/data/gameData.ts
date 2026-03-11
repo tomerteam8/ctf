@@ -1177,7 +1177,7 @@ export const sampleNodes: PentestNode[] = [
         hint: 'Can the entire management database be extracted?',
         easyHint: 'Can all of the management system\'s data be copied out?',
         description: 'Extract the management database containing service credentials, directory sync data, backup encryption keys, and the nightly customer data mirror. This would grant persistent access to the entire infrastructure.',
-        requiredAssets: ['credentials'],
+        requiredAssets: [],
         revealsNodes: [],
         revealsAchievements: [
           { name: 'Management Database Exfiltrated', description: 'Full management DB extracted — service credentials, AD sync data, backup keys, and 52,847-record customer mirror. Complete infrastructure compromise.' },
