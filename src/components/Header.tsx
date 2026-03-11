@@ -3,13 +3,13 @@ import { useGameStore } from '../store/gameStore';
 import type { Difficulty } from '../data/types';
 import { LLM_PROVIDER, LLM_NEEDS_KEY } from '../services/llm';
 import type { AppView } from '../App';
+import { useIsMobile, HEADER_H_DESKTOP, HEADER_H_MOBILE } from '../hooks/useIsMobile';
 
 const st = {
   bar: {
-    position: 'fixed' as const, top: 0, left: 0, right: 0, height: 56,
+    position: 'fixed' as const, top: 0, left: 0, right: 0,
     background: 'rgba(17,24,39,0.95)', backdropFilter: 'blur(12px)',
     borderBottom: '1px solid #2a3a5c', zIndex: 50,
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px',
   },
   title: { fontSize: 22, fontWeight: 800, color: '#00f0ff', letterSpacing: '0.3em' },
   caret: {
@@ -37,6 +37,8 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
   const [showSettings, setShowSettings] = useState(false);
   const [keyInput, setKeyInput] = useState(apiKey);
   const [confirmReset, setConfirmReset] = useState(false);
+  const isMobile = useIsMobile();
+  const headerH = isMobile ? HEADER_H_MOBILE : HEADER_H_DESKTOP;
 
   const discovered = Array.from(nodes.values()).filter((n) => n.discovered).length;
 
@@ -55,81 +57,102 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
     setShowSettings(false);
   };
 
-  return (
-    <>
-      <div style={st.bar}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span style={st.title}>{text}<span style={st.caret} /></span>
-          <span style={st.sub}>Pentest Quest</span>
-        </div>
-        {/* view toggle */}
-        <div style={{ display: 'flex', gap: 2, background: 'rgba(10,14,23,0.6)', borderRadius: 8, padding: 3 }}>
-          {(['graph', 'network'] as AppView[]).map((v) => {
-            const active = view === v;
-            const labels: Record<AppView, string> = { graph: '⬡  Attack Graph', network: '🗺  Network Map' };
-            return (
-              <button
-                key={v}
-                onClick={() => onViewChange(v)}
-                style={{
-                  padding: '4px 12px',
-                  borderRadius: 6,
-                  border: active ? '1px solid rgba(0,240,255,0.4)' : '1px solid transparent',
-                  background: active ? 'rgba(0,240,255,0.12)' : 'transparent',
-                  color: active ? '#00f0ff' : '#64748b',
-                  fontWeight: active ? 700 : 400,
-                  fontSize: 11,
-                  cursor: 'pointer',
-                  letterSpacing: '0.05em',
-                  transition: 'all 0.15s',
-                  fontFamily: 'inherit',
-                }}
-              >
-                {labels[v]}
-              </button>
-            );
-          })}
-        </div>
+  const diffColor = difficulty === 'easy' ? '#00ff88' : difficulty === 'normal' ? '#00f0ff' : '#ff3366';
+  const diffBg = difficulty === 'easy' ? 'rgba(0,255,136,0.2)' : difficulty === 'normal' ? 'rgba(0,240,255,0.2)' : 'rgba(255,51,102,0.2)';
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={st.stat}><span style={{ ...st.statNum, color: '#00f0ff' }}>{discovered}</span> / {nodes.size} nodes</span>
-          <span style={st.stat}><span style={{ ...st.statNum, color: '#00ff88' }}>{assets.length}</span> assets</span>
-          <div style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
-            <div style={st.dot('#00ff88', 0)} />
-            <div style={st.dot('#00f0ff', 0.3)} />
-            <div style={st.dot('#ff3366', 0.6)} />
-          </div>
-          <span style={{
-            marginLeft: 12,
-            padding: '3px 8px',
-            borderRadius: 6,
-            fontSize: 10,
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.1em',
-            background: difficulty === 'easy' ? 'rgba(0,255,136,0.2)' : difficulty === 'normal' ? 'rgba(0,240,255,0.2)' : 'rgba(255,51,102,0.2)',
-            color: difficulty === 'easy' ? '#00ff88' : difficulty === 'normal' ? '#00f0ff' : '#ff3366',
-          }}>
-            {difficulty}
-          </span>
+  const diffBadge = (
+    <span style={{
+      padding: '3px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+      textTransform: 'uppercase', letterSpacing: '0.1em',
+      background: diffBg, color: diffColor,
+    }}>
+      {difficulty}
+    </span>
+  );
+
+  const settingsBtn = (
+    <button
+      onClick={() => { setKeyInput(apiKey); setShowSettings(true); }}
+      title="Settings"
+      style={{
+        background: 'none',
+        border: `1px solid ${(!LLM_NEEDS_KEY || apiKey) ? 'rgba(0,255,136,0.3)' : 'rgba(255,51,102,0.3)'}`,
+        borderRadius: 8, padding: '6px 8px', cursor: 'pointer', fontSize: 16, lineHeight: 1,
+        color: (!LLM_NEEDS_KEY || apiKey) ? '#00ff88' : '#ff3366',
+      }}
+    >
+      ⚙
+    </button>
+  );
+
+  const viewToggle = (
+    <div style={{ display: 'flex', gap: 2, background: 'rgba(10,14,23,0.6)', borderRadius: 8, padding: 3, ...(isMobile && { flex: 1 }) }}>
+      {(['graph', 'network'] as AppView[]).map((v) => {
+        const active = view === v;
+        const labels: Record<AppView, string> = { graph: '⬡  Attack Graph', network: '🗺  Network Map' };
+        return (
           <button
-            onClick={() => { setKeyInput(apiKey); setShowSettings(true); }}
-            title="Settings"
+            key={v}
+            onClick={() => onViewChange(v)}
             style={{
-              marginLeft: 8,
-              background: 'none',
-              border: `1px solid ${(!LLM_NEEDS_KEY || apiKey) ? 'rgba(0,255,136,0.3)' : 'rgba(255,51,102,0.3)'}`,
-              borderRadius: 8,
-              padding: '6px 8px',
+              padding: isMobile ? '8px 12px' : '4px 12px',
+              borderRadius: 6,
+              border: active ? '1px solid rgba(0,240,255,0.4)' : '1px solid transparent',
+              background: active ? 'rgba(0,240,255,0.12)' : 'transparent',
+              color: active ? '#00f0ff' : '#64748b',
+              fontWeight: active ? 700 : 400,
+              fontSize: 11,
               cursor: 'pointer',
-              fontSize: 16,
-              lineHeight: 1,
-              color: (!LLM_NEEDS_KEY || apiKey) ? '#00ff88' : '#ff3366',
+              letterSpacing: '0.05em',
+              transition: 'all 0.15s',
+              fontFamily: 'inherit',
+              ...(isMobile && { flex: 1, textAlign: 'center' }),
             }}
           >
-            ⚙
+            {labels[v]}
           </button>
-        </div>
+        );
+      })}
+    </div>
+  );
+
+  return (
+    <>
+      <div style={{ ...st.bar, height: headerH }}>
+        {isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            {/* Mobile Row 1: title + settings */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: HEADER_H_MOBILE / 2 }}>
+              <span style={{ ...st.title, fontSize: 18 }}>{text}<span style={st.caret} /></span>
+              {settingsBtn}
+            </div>
+            {/* Mobile Row 2: view toggle + difficulty badge */}
+            <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px', height: HEADER_H_MOBILE / 2, borderTop: '1px solid rgba(42,58,92,0.6)', gap: 8 }}>
+              {viewToggle}
+              {diffBadge}
+            </div>
+          </div>
+        ) : (
+          /* Desktop: single row */
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '100%', padding: '0 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={st.title}>{text}<span style={st.caret} /></span>
+              <span style={st.sub}>Pentest Quest</span>
+            </div>
+            {viewToggle}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={st.stat}><span style={{ ...st.statNum, color: '#00f0ff' }}>{discovered}</span> / {nodes.size} nodes</span>
+              <span style={st.stat}><span style={{ ...st.statNum, color: '#00ff88' }}>{assets.length}</span> assets</span>
+              <div style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
+                <div style={st.dot('#00ff88', 0)} />
+                <div style={st.dot('#00f0ff', 0.3)} />
+                <div style={st.dot('#ff3366', 0.6)} />
+              </div>
+              {diffBadge}
+              {settingsBtn}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Settings modal */}

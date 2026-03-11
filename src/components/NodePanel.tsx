@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
 import ActionCard from './ActionCard';
 import type { InfoSeverity } from '../data/types';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const typeIcons: Record<string, string> = {
   internet_server: '🌐', web_page: '📄',
@@ -58,14 +59,15 @@ export default function NodePanel() {
   const completedActions = useGameStore((s) => s.completedActions);
   const node = selectedNodeId ? nodes.get(selectedNodeId) : null;
 
+  const isMobile = useIsMobile();
   const [input, setInput] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showServiceInfo, setShowServiceInfo] = useState(true);
   const [showCveInfo, setShowCveInfo] = useState(false);
   const [showHints, setShowHints] = useState(true);
   const [openLogs, setOpenLogs] = useState<Record<number, boolean>>({});
   const [hintWarning, setHintWarning] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const history = selectedNodeId ? promptHistory[selectedNodeId] || [] : [];
 
@@ -86,7 +88,7 @@ export default function NodePanel() {
     if (pendingPromptText) {
       setInput(pendingPromptText);
       setPendingPromptText('');
-      inputRef.current?.focus();
+      textareaRef.current?.focus();
     }
   }, [pendingPromptText, setPendingPromptText]);
 
@@ -106,13 +108,14 @@ export default function NodePanel() {
     }
 
     setInput('');
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
     executePrompt(selectedNodeId, text);
   };
 
   const handleHintClick = (text: string) => {
     if (!selectedNodeId || executingAction) return;
     setInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
-    inputRef.current?.focus();
+    textareaRef.current?.focus();
   };
 
   return (
@@ -120,19 +123,31 @@ export default function NodePanel() {
       {node && (
         <motion.div
           key="panel"
-          initial={{ x: 400, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: 400, opacity: 0 }}
+          initial={isMobile ? { y: '100%', opacity: 0 } : { x: 400, opacity: 0 }}
+          animate={isMobile ? { y: 0, opacity: 1 } : { x: 0, opacity: 1 }}
+          exit={isMobile ? { y: '100%', opacity: 0 } : { x: 400, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          style={{
+          style={isMobile ? {
+            position: 'fixed', left: 0, right: 0, bottom: 0, top: 'auto',
+            height: '50vh', width: '100%',
+            background: 'rgba(17,24,39,0.98)', backdropFilter: 'blur(12px)',
+            borderTop: '1px solid #2a3a5c', borderRadius: '16px 16px 0 0', zIndex: 60,
+            display: 'flex', flexDirection: 'column',
+          } : {
             position: 'fixed', right: 0, top: 0, height: '100%', width: 380,
             background: 'rgba(17,24,39,0.97)', backdropFilter: 'blur(12px)',
             borderLeft: '1px solid #2a3a5c', zIndex: 60,
             display: 'flex', flexDirection: 'column',
           }}
         >
+          {/* Drag handle (mobile only) */}
+          {isMobile && (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px', flexShrink: 0 }}>
+              <div style={{ width: 40, height: 4, borderRadius: 2, background: '#2a3a5c' }} />
+            </div>
+          )}
           {/* Scrollable content area */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: 20, paddingBottom: 0 }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '12px 16px 0' : 20, paddingBottom: 0 }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -539,11 +554,22 @@ export default function NodePanel() {
             background: 'rgba(10,14,23,0.8)',
           }}>
             <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                ref={inputRef}
+              <textarea
+                ref={textareaRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                rows={1}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  // Auto-grow: reset height then set to scrollHeight
+                  e.target.style.height = 'auto';
+                  e.target.style.height = `${e.target.scrollHeight}px`;
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
                 placeholder={executingAction ? 'Executing...' : 'What do you want to try?'}
                 disabled={executingAction}
                 style={{
@@ -553,23 +579,31 @@ export default function NodePanel() {
                   border: '1px solid #2a3a5c',
                   background: 'rgba(17,24,39,0.8)',
                   color: '#e2e8f0',
-                  fontSize: 13,
+                  fontSize: isMobile ? 16 : 13,
                   fontFamily: 'monospace',
                   outline: 'none',
+                  resize: 'none',
+                  overflowY: 'hidden',
+                  lineHeight: 1.5,
+                  minHeight: 40,
+                  maxHeight: 160,
+                  overflowX: 'hidden',
+                  wordBreak: 'break-word',
                 }}
               />
               <button
                 onClick={handleSend}
                 disabled={executingAction || !input.trim()}
                 style={{
-                  padding: '10px 16px',
+                  padding: isMobile ? '12px 20px' : '10px 16px',
                   borderRadius: 8,
                   border: '1px solid rgba(0,240,255,0.3)',
                   background: executingAction || !input.trim() ? 'rgba(17,24,39,0.8)' : 'rgba(0,240,255,0.15)',
                   color: executingAction || !input.trim() ? '#94a3b8' : '#00f0ff',
                   fontWeight: 700,
-                  fontSize: 12,
+                  fontSize: 14,
                   cursor: executingAction || !input.trim() ? 'not-allowed' : 'pointer',
+                  minWidth: isMobile ? 48 : undefined,
                 }}
               >
                 {executingAction ? '...' : '▶'}
@@ -612,7 +646,7 @@ export default function NodePanel() {
             <button
               onClick={() => {
                 setHintWarning(null);
-                inputRef.current?.focus();
+                textareaRef.current?.focus();
               }}
               style={{
                 width: '100%', padding: '10px 0', borderRadius: 8,

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ReactFlow, Background, BackgroundVariant, Controls, MiniMap, Handle, Position } from '@xyflow/react';
+import { ReactFlow, Background, BackgroundVariant, Handle, Position } from '@xyflow/react';
 import type { Node, Edge, NodeProps } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { networkDevices, networkEdges, ATTACK_TO_NETWORK } from '../data/gameData';
@@ -8,7 +8,6 @@ import { useGameStore } from '../store/gameStore';
 
 // ── Colors ───────────────────────────────────────────────────────────────────
 
-const CVE_COLOR = '#fbbf24';        // amber-400 — faint yellow for CVE nodes
 const CVE_BORDER = '#fbbf2466';
 const CVE_GLOW = '0 0 8px rgba(251,191,36,0.15)';
 
@@ -561,24 +560,6 @@ export default function NetworkMap() {
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={28} size={1} color="#1a2744" />
-        <Controls
-          style={{ background: 'rgba(17,24,39,0.9)', border: '1px solid #2a3a5c', borderRadius: 8 }}
-          showInteractive={false}
-        />
-        <MiniMap
-          style={{ background: 'rgba(10,14,23,0.9)', border: '1px solid #2a3a5c', borderRadius: 8 }}
-          nodeColor={(node) => {
-            if (node.type === 'protection') return '#ff336644';
-            if (node.type === 'zoneBackground') return ((node.data as Record<string, unknown>).color as string) + '33';
-            if (node.type === 'device') {
-              const d = node.data as Record<string, unknown>;
-              if (d.reached) return REACHED_COLOR;
-              return d.hasCVE ? CVE_COLOR : (d.color as string);
-            }
-            return '#1e293b';
-          }}
-          maskColor="rgba(10,14,23,0.7)"
-        />
       </ReactFlow>
     </div>
   );
