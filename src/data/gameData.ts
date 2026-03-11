@@ -815,19 +815,6 @@ export const sampleNodes: PentestNode[] = [
         category: 'exploit',
       },
       {
-        id: 'ssrf_endpoint_enum',
-        name: 'Discover Hidden Admin Endpoints',
-        hint: 'Are there undocumented endpoints on the local server?',
-        easyHint: 'Are there hidden admin pages only accessible from inside the network?',
-        description: 'Use the import tool\'s server-side access to probe for hidden endpoints on the local server — admin panels, debug interfaces, health checks, internal APIs. Most paths return 404, but an admin account creation endpoint responds and reveals its expected input format. It has no authentication — built for internal IT scripts with the assumption that only trusted tools can reach it.',
-        requiredAssets: ['credentials'],
-        revealsNodes: [],
-        revealsAssets: [
-          { type: 'api_key', name: 'Admin Provisioning Endpoint', value: 'SSRF endpoint enumeration discovered localhost/admin/create — unauthenticated admin account provisioning endpoint accepting { email, password, role }' },
-        ],
-        category: 'enumeration',
-      },
-      {
         id: 'ssrf_create_admin',
         name: 'Create Admin Account via Provisioning Endpoint',
         hint: 'Can you use the discovered endpoint to create an admin account?',
@@ -967,6 +954,7 @@ export const sampleNodes: PentestNode[] = [
         description: 'Search the directory to identify employees with administrative or IT roles who could be high-value targets. Role titles and departments are visible, but actual privilege levels and security group memberships are not exposed through the directory.',
         requiredAssets: ['credentials'],
         revealsNodes: [],
+        revealsAssets: [{ type: 'api_key', name: 'Admin API Key', value: 'An employee saved the admin API key in a /tmp/jira_admin.txt in the employee directory' }],
         category: 'enumeration',
       },
     ],
