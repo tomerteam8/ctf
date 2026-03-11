@@ -1,6 +1,8 @@
 import type { CustomNodeElementProps } from 'react-d3-tree';
 import { useGameStore } from '../store/gameStore';
 
+const IS_SAFARI = /Safari/.test(navigator.userAgent) && /Apple Computer/.test(navigator.vendor);
+
 const typeIcons: Record<string, string> = {
   internet_server: '\u{1F310}', web_page: '\u{1F4C4}',
   database: '\u{1F5C4}', api: '\u26A1', network: '\u{1F5A7}',
@@ -55,7 +57,7 @@ export default function TreeNodeCard({ nodeDatum, toggleNode }: CustomNodeElemen
   const cardH = completed ? 70 : 110;
 
   const cardStyle: React.CSSProperties = {
-    position: 'relative',
+    ...(!IS_SAFARI && { position: 'relative' }),
     padding: completed ? '8px 12px' : '13px 17px',
     borderRadius: completed ? 8 : 10,
     border: '2px solid',
@@ -66,7 +68,7 @@ export default function TreeNodeCard({ nodeDatum, toggleNode }: CustomNodeElemen
     minWidth: completed ? 120 : 154,
     maxWidth: cardW,
     textAlign: 'center',
-    transition: 'all 0.3s',
+    ...(!IS_SAFARI && { transition: 'all 0.3s' }),
     userSelect: 'none',
     opacity: completed ? 0.6 : 1,
     boxSizing: 'border-box',
@@ -75,7 +77,7 @@ export default function TreeNodeCard({ nodeDatum, toggleNode }: CustomNodeElemen
   if (isSelected) {
     cardStyle.outline = '2px solid #00f0ff';
     cardStyle.outlineOffset = 2;
-    cardStyle.transform = 'scale(1.05)';
+    if (!IS_SAFARI) cardStyle.transform = 'scale(1.05)';
     cardStyle.opacity = 1;
   }
 
@@ -115,7 +117,7 @@ export default function TreeNodeCard({ nodeDatum, toggleNode }: CustomNodeElemen
             )}
             {/* Status dot */}
             <div style={{
-              position: 'absolute', top: -5, right: -5,
+              ...(!IS_SAFARI && { position: 'absolute', top: -5, right: -5 }),
               width: completed ? 10 : 12, height: completed ? 10 : 12,
               borderRadius: '50%', background: dotColor(status, inProgress), border: '2px solid #0a0e17',
             }} />
@@ -142,11 +144,11 @@ export default function TreeNodeCard({ nodeDatum, toggleNode }: CustomNodeElemen
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                transition: 'all 0.2s',
+                ...(!IS_SAFARI && { transition: 'all 0.2s' }),
               }}
               title={isCollapsed ? 'Expand subtree' : 'Collapse subtree'}
             >
-              <span style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0)', transition: 'transform 0.2s', display: 'block', lineHeight: 1 }}>
+              <span style={{ ...(!IS_SAFARI && { transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0)', transition: 'transform 0.2s' }), display: 'block', lineHeight: 1 }}>
                 ▼
               </span>
             </button>
