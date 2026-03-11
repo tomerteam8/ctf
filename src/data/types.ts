@@ -2,7 +2,7 @@ export type Difficulty = 'easy' | 'normal' | 'hard';
 export type NodeType = 'internet_server' | 'web_page' | 'database' | 'api' | 'network';
 export type NodeStatus = 'locked' | 'available' | 'completed';
 export type ActionCategory = 'recon' | 'exploit' | 'enumeration' | 'analysis';
-export type AssetType = 'api_key' | 'credentials' | 'db_credentials' | 'logic_flaw' | 'token' | 'certificate';
+export type AssetType = 'api_key' | 'credentials' | 'db_credentials' | 'logic_flaw' | 'token' | 'certificate' | 'admin_password';
 
 export interface Achievement {
   id: string;
