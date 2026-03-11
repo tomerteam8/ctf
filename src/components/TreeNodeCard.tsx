@@ -92,7 +92,9 @@ export default function TreeNodeCard({ nodeDatum, toggleNode }: CustomNodeElemen
         height={foH}
         style={{ overflow: 'visible' }}
       >
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <div
+          {...{ xmlns: 'http://www.w3.org/1999/xhtml' } as any}
           style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', height: '100%', justifyContent: 'flex-start', paddingTop: 4 }}
         >
           {/* Card */}
