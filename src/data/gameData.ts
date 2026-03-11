@@ -768,6 +768,9 @@ export const sampleNodes: PentestNode[] = [
         easyHint: 'Can an employee change the price of products they shouldn\'t control?',
         description: 'Test whether product prices can be reduced to enable fraudulent purchases. Changes over 50% require manager approval, but smaller adjustments go live immediately — enabling gradual price reduction through multiple small edits, each under the approval threshold.',
         requiredAssets: ['credentials'],
+        revealsAchievements: [
+          { name: 'Price Manipulation', description: 'Product pricing reduced to enable fraudulent purchases' },
+        ],
         revealsNodes: [],
         category: 'exploit',
       },
