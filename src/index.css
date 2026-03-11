@@ -59,3 +59,14 @@ svg path.pentest-tree-link--compromised {
 }
 /* Hide default circle nodes */
 svg .rd3t-node circle, svg .rd3t-leaf-node circle { display: none; }
+
+/* Enable touch pan/zoom on the d3-tree SVG */
+.rd3t-svg { touch-action: none; }
+
+/* Prevent body overscroll bounce on mobile */
+body { overscroll-behavior: none; }
+
+/* Prevent iOS auto-zoom on input focus (triggered when font-size < 16px) */
+@media (max-width: 768px) {
+  input, textarea, select { font-size: 16px !important; }
+}

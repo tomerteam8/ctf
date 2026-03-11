@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
 import type { AssetType } from '../data/types';
+import { useIsMobile, HEADER_H_DESKTOP, HEADER_H_MOBILE } from '../hooks/useIsMobile';
 
 const assetIcons: Record<AssetType, string> = {
   api_key: '\u{1F511}', credentials: '\u{1F464}', db_credentials: '\u{1F5C4}',
@@ -18,6 +19,11 @@ export default function AssetInventory() {
   const setPendingPromptText = useGameStore((s) => s.setPendingPromptText);
   const [isOpen, setIsOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('assets');
+  const isMobile = useIsMobile();
+  const headerH = isMobile ? HEADER_H_MOBILE : HEADER_H_DESKTOP;
+  const topOffset = headerH + (isMobile ? 16 : 8);
+  // On mobile always stay above the 50vh NodePanel so the two panels never overlap
+  const drawerHeight = isMobile ? `calc(50vh - ${topOffset}px)` : `calc(100vh - ${topOffset}px)`;
 
   const grouped = assets.reduce<Record<string, typeof assets>>((acc, a) => {
     (acc[a.type] ||= []).push(a);
@@ -40,7 +46,7 @@ export default function AssetInventory() {
   });
 
   return (
-    <div style={{ position: 'fixed', left: 0, top: 64, zIndex: 40 }}>
+    <div style={{ position: 'fixed', left: 0, top: topOffset, zIndex: 40 }}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         style={{
@@ -63,13 +69,15 @@ export default function AssetInventory() {
             exit={{ x: -300, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             style={{
-              position: 'fixed', left: 0, top: 64, height: 'calc(100vh - 64px)', width: 300,
+              position: 'fixed', left: 0, top: topOffset, height: drawerHeight,
+              width: isMobile ? 240 : 300,
               background: 'rgba(17,24,39,0.97)', backdropFilter: 'blur(12px)',
-              borderRight: '1px solid #2a3a5c', overflowY: 'auto', zIndex: 41,
+              borderRight: '1px solid #2a3a5c', zIndex: 41,
+              display: 'flex', flexDirection: 'column', overflow: 'hidden',
             }}
           >
-            {/* Header */}
-            <div style={{ padding: '12px 16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* Header — sticky */}
+            <div style={{ padding: '12px 16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <span style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.15em', color: '#94a3b8', fontWeight: 700 }}>
                 {tab === 'assets' ? 'Asset Inventory' : 'Achievements'}
               </span>
@@ -78,8 +86,8 @@ export default function AssetInventory() {
               </button>
             </div>
 
-            {/* Tabs */}
-            <div style={{ display: 'flex', margin: '10px 16px 0', borderBottom: '1px solid #2a3a5c' }}>
+            {/* Tabs — sticky */}
+            <div style={{ display: 'flex', margin: '10px 16px 0', borderBottom: '1px solid #2a3a5c', flexShrink: 0 }}>
               <button style={tabStyle(tab === 'assets')} onClick={() => setTab('assets')}>
                 Assets {assets.length > 0 && <span style={{ color: '#00ff88' }}>{assets.length}</span>}
               </button>
@@ -88,7 +96,8 @@ export default function AssetInventory() {
               </button>
             </div>
 
-            <div style={{ padding: 16 }}>
+            {/* Scrollable content */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
               {tab === 'assets' ? (
                 assets.length === 0 ? (
                   <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>No assets yet. Execute actions to find them.</p>
