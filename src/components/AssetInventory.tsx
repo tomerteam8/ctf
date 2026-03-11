@@ -7,6 +7,7 @@ import { useIsMobile, HEADER_H_DESKTOP, HEADER_H_MOBILE } from '../hooks/useIsMo
 const assetIcons: Record<AssetType, string> = {
   api_key: '\u{1F511}', credentials: '\u{1F464}', db_credentials: '\u{1F5C4}',
   logic_flaw: '\u{1F41B}', token: '\u{1F3AB}', certificate: '\u{1F4DC}',
+  admin_password: '\u{1F480}',
 };
 
 type Tab = 'assets' | 'goals';
