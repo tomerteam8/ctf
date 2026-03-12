@@ -41,6 +41,8 @@ interface GameState {
   setDifficulty: (d: Difficulty) => void;
   clearFlag: () => void;
   revealAllNodes: () => void;
+  quickUnlockStage1: () => void;
+  quickUnlockStage2: () => void;
   resetGame: () => void;
 }
 
@@ -51,6 +53,9 @@ const buildInitialNodes = () => {
 };
 
 const PERSIST_KEY = 'peter-game-progress';
+
+const CHEAT_STAGE1 = import.meta.env.VITE_CHEAT_STAGE1 || 'R1';
+const CHEAT_STAGE2 = import.meta.env.VITE_CHEAT_STAGE2 || 'R2';
 
 export const useGameStore = create<GameState>()(
   persist(
@@ -123,9 +128,75 @@ export const useGameStore = create<GameState>()(
     });
   },
 
+  quickUnlockStage1: () => {
+    set((state) => {
+      const nodes = new Map(state.nodes);
+      const STAGE1_ZONES = new Set(['Perimeter']);
+      const STAGE1_EXTRA_NODES = ['employee_portal'];
+      for (const [id, node] of nodes) {
+        if (!node.discovered && (STAGE1_ZONES.has(node.zone ?? '') || STAGE1_EXTRA_NODES.includes(id))) {
+          nodes.set(id, { ...node, discovered: true, status: 'available' });
+        }
+      }
+      const newAsset: Asset = {
+        id: `cheat_credentials_${Date.now()}`,
+        type: 'credentials',
+        name: 'Employee Credentials',
+        value: 'user_type changed from "user" to "employee" via SQLi on change-password endpoint',
+        discoveredAt: 'password_change',
+        discoveredBy: 'sqli_user_type',
+      };
+      const isDupe = state.assets.some((a) => a.type === newAsset.type && a.value === newAsset.value);
+      return { nodes, assets: isDupe ? state.assets : [...state.assets, newAsset] };
+    });
+  },
+
+  quickUnlockStage2: () => {
+    get().quickUnlockStage1();
+    set((state) => {
+      const nodes = new Map(state.nodes);
+      const STAGE2_ZONES = new Set(['Corporate']);
+      for (const [id, node] of nodes) {
+        if (!node.discovered && STAGE2_ZONES.has(node.zone ?? '')) {
+          nodes.set(id, { ...node, discovered: true, status: 'available' });
+        }
+      }
+      const newAssets: Asset[] = [
+        {
+          id: `cheat_token_${Date.now()}`,
+          type: 'token',
+          name: 'PAM Vault Service Token',
+          value: 'Admin session PAM Vault token granting access to management zone services (10.30.1.10)',
+          discoveredAt: 'admin_dashboard',
+          discoveredBy: 'admin_health_check',
+        },
+        {
+          id: `cheat_apikey_${Date.now() + 1}`,
+          type: 'api_key',
+          name: 'Admin API Key',
+          value: 'An employee saved the admin API key in a /tmp/jira_admin.txt in the employee directory',
+          discoveredAt: 'employee_directory',
+          discoveredBy: 'directory_enum_admins',
+        },
+      ];
+      const dedupedAssets = newAssets.filter(
+        (na) => !state.assets.some((a) => a.type === na.type && a.value === na.value),
+      );
+      return { nodes, assets: [...state.assets, ...dedupedAssets] };
+    });
+  },
+
   executePrompt: async (nodeId, prompt) => {
     if (prompt.trim() === 'R') {
       get().revealAllNodes();
+      return;
+    }
+    if (prompt.trim() === CHEAT_STAGE1) {
+      get().quickUnlockStage1();
+      return;
+    }
+    if (prompt.trim() === CHEAT_STAGE2) {
+      get().quickUnlockStage2();
       return;
     }
 
