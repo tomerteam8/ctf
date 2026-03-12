@@ -1,4 +1,5 @@
 import type { PentestNode, Asset, LLMResponse, Difficulty } from '../data/types';
+import { sendPromptToServer } from './auth';
 
 export type LLMProvider = 'openai' | 'anthropic' | 'local';
 
@@ -267,7 +268,7 @@ async function sendLocal(
 }
 
 // ---------------------------------------------------------------------------
-// Public API (drop-in replacement for the old sendPrompt)
+// Public API
 // ---------------------------------------------------------------------------
 
 export async function sendPrompt(
@@ -277,21 +278,28 @@ export async function sendPrompt(
   history: { role: string; content: string }[],
   apiKey: string,
   difficulty: Difficulty = 'normal',
+  serverToken?: string | null,
 ): Promise<LLMResponse> {
   const systemPrompt = buildSystemPrompt(node, assets, difficulty);
   const messages = [...history, { role: 'user', content: prompt }];
 
   let raw: string | Record<string, unknown>;
-  switch (LLM_PROVIDER) {
-    case 'openai':
-      raw = await sendOpenAI(systemPrompt, messages, apiKey);
-      break;
-    case 'anthropic':
-      raw = await sendAnthropic(systemPrompt, messages, apiKey);
-      break;
-    case 'local':
-      raw = await sendLocal(systemPrompt, messages);
-      break;
+
+  if (serverToken !== undefined) {
+    // Server mode: proxy through backend using server's API key
+    raw = await sendPromptToServer(serverToken, systemPrompt, messages);
+  } else {
+    switch (LLM_PROVIDER) {
+      case 'openai':
+        raw = await sendOpenAI(systemPrompt, messages, apiKey);
+        break;
+      case 'anthropic':
+        raw = await sendAnthropic(systemPrompt, messages, apiKey);
+        break;
+      case 'local':
+        raw = await sendLocal(systemPrompt, messages);
+        break;
+    }
   }
 
   return parseResponse(raw);
