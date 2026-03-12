@@ -44,6 +44,7 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
 
   const appConfig = useAuthStore((s) => s.appConfig);
   const serverModeActive = !!appConfig?.hasServerKey;
+  const isAdminUrl = window.location.pathname.includes('/admin');
 
   const discovered = Array.from(nodes.values()).filter((n) => n.discovered).length;
 
@@ -93,7 +94,7 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
     </button>
   );
 
-  const adminBtn = (
+  const adminBtn = isAdminUrl ? (
     <button
       onClick={() => setShowAdmin(true)}
       title="Admin Panel"
@@ -106,7 +107,7 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
     >
       🔑
     </button>
-  );
+  ) : null;
 
   const viewToggle = (
     <div style={{ display: 'flex', gap: 2, background: 'rgba(10,14,23,0.6)', borderRadius: 8, padding: 3, ...(isMobile && { flex: 1 }) }}>
