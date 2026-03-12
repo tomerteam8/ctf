@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { PentestNode, Asset, Achievement, ActionResult, Difficulty } from '../data/types';
 import { sampleNodes } from '../data/gameData';
 import { sendPrompt, LLM_NEEDS_KEY, LLM_PROVIDER } from '../services/llm';
+import { useAuthStore } from './authStore';
 
 interface PromptMessage {
   role: 'user' | 'assistant';
@@ -204,7 +205,10 @@ export const useGameStore = create<GameState>()(
     const node = state.nodes.get(nodeId);
     if (!node) return;
 
-    if (LLM_NEEDS_KEY && !state.apiKey) {
+    const { appConfig, token: authToken } = useAuthStore.getState();
+    const serverModeActive = !!appConfig?.hasServerKey;
+
+    if (!serverModeActive && LLM_NEEDS_KEY && !state.apiKey) {
       set({
         actionResult: {
           success: false,
@@ -232,7 +236,8 @@ export const useGameStore = create<GameState>()(
         state.assets,
         nodeHistory.map((m) => ({ role: m.role, content: m.content })),
         state.apiKey,
-        state.difficulty
+        state.difficulty,
+        serverModeActive ? authToken : undefined,
       );
 
       // Find the matched action to get its reveals
@@ -427,6 +432,9 @@ export const useGameStore = create<GameState>()(
       });
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMsg === '__SESSION_EXPIRED__') {
+        useAuthStore.getState().logout();
+      }
       const historyWithError = [
         ...updatedHistory,
         { role: 'assistant' as const, content: `Error: ${errorMsg}`, success: false },

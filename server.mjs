@@ -1,70 +1,107 @@
 /**
- * Local Claude CLI proxy server — DEVELOPER USE ONLY.
+ * PETER — Backend server
  *
- * Each request spawns a fresh `claude -p` invocation. The system prompt
- * already contains all context (current node, available actions, player
- * assets) so no session persistence is needed.
+ * Handles:
+ *   - JWT authentication (user + admin)
+ *   - Admin LLM config management (API key, provider, model)
+ *   - LLM proxy (OpenAI, Anthropic, local Claude CLI)
+ *   - Static frontend serving in production
  *
- * Prerequisites:
- *   - Claude Code CLI installed (https://docs.anthropic.com/en/docs/claude-code)
- *   - VITE_LLM_PROVIDER=local in your .env
+ * Environment variables:
+ *   USER_PASSWORD     — if set, all users must log in to use the app
+ *   ADMIN_PASSWORD    — required for admin panel access
+ *   JWT_SECRET        — JWT signing secret (auto-generated if omitted)
+ *   PORT              — server port (default: 3001)
+ *   CORS_ORIGIN       — allowed CORS origin (default: http://localhost:5173)
  *
  * Usage:
- *   node server.mjs
- *
- * Logs are written to server.log in the project root.
+ *   node --env-file=.env server.mjs
  */
 
 import express from 'express';
 import cors from 'cors';
+import jwt from 'jsonwebtoken';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { execFileSync, execFile } from 'child_process';
-import fs from 'fs';
-import path from 'path';
+import { createHash, randomBytes } from 'crypto';
 import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ---------------------------------------------------------------------------
 // Logging
 // ---------------------------------------------------------------------------
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const LOG_FILE = path.join(__dirname, 'server.log');
-
 function log(level, message, extra) {
   const ts = new Date().toISOString();
-  const line = `[${ts}] ${level}: ${message}${extra ? '\n  ' + JSON.stringify(extra) : ''}`;
+  const line = `[${ts}] ${level}: ${message}${extra ? ' ' + JSON.stringify(extra) : ''}`;
   console.log(line);
-  fs.appendFileSync(LOG_FILE, line + '\n');
 }
 
 // ---------------------------------------------------------------------------
-// Guards
+// Config persistence
 // ---------------------------------------------------------------------------
 
-if (process.env.NODE_ENV === 'production') {
-  log('ERROR', 'The local Claude proxy is for development only. Do not run in production.');
-  process.exit(1);
+const CONFIG_FILE = join(__dirname, 'server-config.json');
+
+let serverConfig = { apiKey: null, provider: null, model: null };
+
+if (existsSync(CONFIG_FILE)) {
+  try {
+    serverConfig = JSON.parse(readFileSync(CONFIG_FILE, 'utf8'));
+    log('INFO', `Loaded server config: provider=${serverConfig.provider}, hasKey=${!!serverConfig.apiKey}`);
+  } catch (e) {
+    log('WARN', 'Failed to parse server-config.json, starting fresh');
+  }
 }
 
-let CLAUDE_PATH;
+function saveConfig() {
+  writeFileSync(CONFIG_FILE, JSON.stringify(serverConfig, null, 2));
+}
+
+// ---------------------------------------------------------------------------
+// Environment
+// ---------------------------------------------------------------------------
+
+const USER_PASSWORD = process.env.USER_PASSWORD || null;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
+const JWT_SECRET = process.env.JWT_SECRET || randomBytes(32).toString('hex');
+const PORT = parseInt(process.env.PORT || '3001', 10);
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+const IS_PROD = process.env.NODE_ENV === 'production';
+
+if (!ADMIN_PASSWORD) {
+  log('WARN', 'ADMIN_PASSWORD not set — admin panel is disabled');
+}
+if (!USER_PASSWORD) {
+  log('INFO', 'USER_PASSWORD not set — authentication is disabled');
+}
+
+// ---------------------------------------------------------------------------
+// Local Claude CLI (optional, dev mode)
+// ---------------------------------------------------------------------------
+
+let CLAUDE_PATH = null;
 try {
   CLAUDE_PATH = execFileSync('which', ['claude'], { encoding: 'utf-8' }).trim();
+  log('INFO', `Claude CLI available at: ${CLAUDE_PATH}`);
 } catch {
-  log('ERROR', '`claude` CLI not found in PATH. Install it first: https://docs.anthropic.com/en/docs/claude-code');
-  process.exit(1);
+  log('INFO', 'Claude CLI not found — local mode unavailable');
 }
 
-log('INFO', `Using Claude CLI at: ${CLAUDE_PATH}`);
-
-// Clean env for child processes
 const childEnv = { ...process.env };
 delete childEnv.CLAUDECODE;
 
-// ---------------------------------------------------------------------------
-// Claude invocation
-// ---------------------------------------------------------------------------
-
-function runClaude(prompt) {
+function runClaude(systemPrompt, messages) {
   return new Promise((resolve, reject) => {
+    const fullPrompt = [
+      systemPrompt,
+      '',
+      '--- Conversation history ---',
+      ...messages.map((m) => `${m.role}: ${m.content}`),
+    ].join('\n');
+
     const child = execFile(CLAUDE_PATH, [
       '--output-format', 'stream-json',
       '--verbose',
@@ -78,99 +115,277 @@ function runClaude(prompt) {
 
       const lines = stdout.split('\n').filter(Boolean);
       let resultText = null;
-
       for (const line of lines) {
         try {
           const obj = JSON.parse(line);
-          if (obj.type === 'result' && obj.result) {
-            resultText = obj.result;
-          }
-        } catch {
-          // skip malformed lines
-        }
+          if (obj.type === 'result' && obj.result) resultText = obj.result;
+        } catch { /* skip */ }
       }
 
       if (resultText !== null) {
-        resolve(resultText);
+        // Strip markdown fences if present
+        const fenceMatch = resultText.match(/```(?:\w*)\s*\n([\s\S]*?)\n```/);
+        resolve(fenceMatch ? fenceMatch[1] : resultText);
       } else {
         reject(new Error('No result in Claude output'));
       }
     });
 
-    child.stdin.write(prompt);
+    child.stdin.write(fullPrompt);
     child.stdin.end();
   });
 }
 
 // ---------------------------------------------------------------------------
-// Server
+// LLM calls
 // ---------------------------------------------------------------------------
 
-const PORT = process.env.PORT || 3001;
-const ALLOWED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+async function callOpenAI(apiKey, model, systemPrompt, messages) {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model || 'gpt-4o-mini',
+      messages: [{ role: 'system', content: systemPrompt }, ...messages],
+      temperature: 0.7,
+      response_format: { type: 'json_object' },
+    }),
+  });
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`OpenAI error ${response.status}: ${err}`);
+  }
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+async function callAnthropic(apiKey, model, systemPrompt, messages) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: model || 'claude-sonnet-4-6',
+      system: systemPrompt,
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      max_tokens: 1024,
+      temperature: 0.7,
+    }),
+  });
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Anthropic error ${response.status}: ${err}`);
+  }
+  const data = await response.json();
+  return data.content[0].text;
+}
+
+// ---------------------------------------------------------------------------
+// JWT helpers
+// ---------------------------------------------------------------------------
+
+function signToken(payload, expiresIn = '2h') {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+}
+
+function verifyToken(token) {
+  return jwt.verify(token, JWT_SECRET);
+}
+
+// ---------------------------------------------------------------------------
+// Auth middleware
+// ---------------------------------------------------------------------------
+
+function requireAuth(req, res, next) {
+  if (!USER_PASSWORD) return next();
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    req.user = verifyToken(auth.slice(7));
+    next();
+  } catch {
+    res.status(401).json({ error: 'Session expired — please log in again' });
+  }
+}
+
+function requireAdmin(req, res, next) {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const payload = verifyToken(auth.slice(7));
+    if (payload.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+    req.user = payload;
+    next();
+  } catch {
+    res.status(401).json({ error: 'Admin session expired' });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Express app
+// ---------------------------------------------------------------------------
 
 const app = express();
 
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+    if (!origin || origin === CORS_ORIGIN || origin === 'http://127.0.0.1:5173') {
       cb(null, true);
     } else {
-      log('WARN', `CORS blocked origin: ${origin}`);
       cb(new Error(`CORS blocked: ${origin}`));
     }
   },
+  credentials: true,
 }));
 
-app.use(express.json({ limit: '64kb' }));
+app.use(express.json({ limit: '128kb' }));
 
-app.post('/api/prompt', async (req, res) => {
+// ---------------------------------------------------------------------------
+// Public routes
+// ---------------------------------------------------------------------------
+
+// App config — tells frontend what auth/mode to use
+app.get('/api/config', (req, res) => {
+  const hasServerKey = !!(serverConfig.apiKey || (CLAUDE_PATH && serverConfig.provider === 'local'));
+  res.json({
+    requiresAuth: !!USER_PASSWORD,
+    hasServerKey,
+    provider: serverConfig.provider,
+    model: serverConfig.model,
+  });
+});
+
+// User login
+app.post('/api/auth/login', (req, res) => {
+  if (!USER_PASSWORD) return res.json({ token: null });
+  const { password } = req.body;
+  if (!password || password !== USER_PASSWORD) {
+    return res.status(401).json({ error: 'Invalid password' });
+  }
+  const token = signToken({ role: 'user' }, '2h');
+  log('INFO', 'User logged in');
+  res.json({ token });
+});
+
+// Admin login
+app.post('/api/auth/admin', (req, res) => {
+  if (!ADMIN_PASSWORD) return res.status(503).json({ error: 'Admin not configured' });
+  const { password } = req.body;
+  if (!password || password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Invalid admin password' });
+  }
+  const token = signToken({ role: 'admin' }, '8h');
+  log('INFO', 'Admin logged in');
+  res.json({ token });
+});
+
+// ---------------------------------------------------------------------------
+// Admin routes
+// ---------------------------------------------------------------------------
+
+// Get current config (key masked)
+app.get('/api/admin/config', requireAdmin, (req, res) => {
+  res.json({
+    hasKey: !!serverConfig.apiKey,
+    provider: serverConfig.provider,
+    model: serverConfig.model,
+  });
+});
+
+// Set API key + provider + model
+app.post('/api/admin/config', requireAdmin, (req, res) => {
+  const { apiKey, provider, model } = req.body;
+  if (!provider) {
+    return res.status(400).json({ error: 'provider is required' });
+  }
+  // apiKey is required unless server already has one (in which case blank = keep existing)
+  const resolvedKey = apiKey || serverConfig.apiKey;
+  if (!resolvedKey) {
+    return res.status(400).json({ error: 'apiKey is required' });
+  }
+  const validProviders = ['openai', 'anthropic', 'local'];
+  if (!validProviders.includes(provider)) {
+    return res.status(400).json({ error: `Invalid provider. Must be one of: ${validProviders.join(', ')}` });
+  }
+  serverConfig = { apiKey: resolvedKey, provider, model: model || null };
+  saveConfig();
+  log('INFO', `Admin updated config: provider=${provider}, model=${model || 'default'}`);
+  res.json({ success: true, provider, model: model || null });
+});
+
+// Delete API key — return to local mode
+app.delete('/api/admin/config', requireAdmin, (req, res) => {
+  serverConfig = { apiKey: null, provider: null, model: null };
+  saveConfig();
+  log('INFO', 'Admin deleted server API key');
+  res.json({ success: true });
+});
+
+// ---------------------------------------------------------------------------
+// LLM proxy
+// ---------------------------------------------------------------------------
+
+app.post('/api/prompt', requireAuth, async (req, res) => {
   const { systemPrompt, messages } = req.body;
 
   if (!systemPrompt || !Array.isArray(messages)) {
-    log('WARN', 'Bad request: missing systemPrompt or messages');
-    return res.status(400).json({ error: 'Invalid request. Please contact the developer and refer them to server.log.' });
+    return res.status(400).json({ error: 'Invalid request: systemPrompt and messages required' });
   }
 
-  const userMsg = messages[messages.length - 1]?.content || '(empty)';
-  log('INFO', `Prompt received — user: "${userMsg.slice(0, 80)}${userMsg.length > 80 ? '...' : ''}"`);
+  const provider = serverConfig.provider;
+  const hasKey = !!(serverConfig.apiKey || (CLAUDE_PATH && provider === 'local'));
 
-  const fullPrompt = [
-    systemPrompt,
-    '',
-    '--- Conversation history ---',
-    ...messages.map((m) => `${m.role}: ${m.content}`),
-  ].join('\n');
+  if (!hasKey || !provider) {
+    return res.status(400).json({ error: 'No LLM configured on server. Ask your admin to set an API key.' });
+  }
 
-  const startTime = Date.now();
+  const userMsg = messages[messages.length - 1]?.content || '';
+  log('INFO', `Prompt [${provider}]: "${userMsg.slice(0, 60)}${userMsg.length > 60 ? '…' : ''}"`);
 
+  const start = Date.now();
   try {
-    const text = await runClaude(fullPrompt);
-    const elapsed = Date.now() - startTime;
-
-    // Parse and validate JSON before sending to the frontend.
-    let parsed;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      const fenceMatch = text.match(/```(?:\w*)\s*\n([\s\S]*?)\n```/);
-      if (fenceMatch) {
-        parsed = JSON.parse(fenceMatch[1]);
-      } else {
-        throw new Error(`Claude returned unparseable response: ${text.slice(0, 200)}`);
-      }
+    let result;
+    if (provider === 'openai') {
+      result = await callOpenAI(serverConfig.apiKey, serverConfig.model, systemPrompt, messages);
+    } else if (provider === 'anthropic') {
+      result = await callAnthropic(serverConfig.apiKey, serverConfig.model, systemPrompt, messages);
+    } else if (provider === 'local') {
+      if (!CLAUDE_PATH) return res.status(503).json({ error: 'Claude CLI not found on server' });
+      if (IS_PROD) return res.status(503).json({ error: 'Local mode not available in production' });
+      result = await runClaude(systemPrompt, messages);
     }
-
-    log('INFO', `Claude responded (${elapsed}ms, ${text.length} chars)`);
-    res.json({ response: parsed });
+    log('INFO', `LLM responded (${Date.now() - start}ms)`);
+    res.json({ result });
   } catch (err) {
-    const elapsed = Date.now() - startTime;
-    log('ERROR', `Claude CLI failed (${elapsed}ms): ${err.message}`);
-    res.status(500).json({ error: 'Something went wrong processing your request. Please contact the developer and refer them to server.log.' });
+    log('ERROR', `LLM call failed (${Date.now() - start}ms): ${err.message}`);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// Bind to loopback only
-app.listen(PORT, '127.0.0.1', () => {
-  log('INFO', `Claude proxy server running on http://127.0.0.1:${PORT} (dev only)`);
+// ---------------------------------------------------------------------------
+// Serve frontend in production
+// ---------------------------------------------------------------------------
+
+if (IS_PROD) {
+  const distPath = join(__dirname, 'dist');
+  app.use(express.static(distPath));
+  app.get('*', (req, res) => {
+    res.sendFile(join(distPath, 'index.html'));
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Start
+// ---------------------------------------------------------------------------
+
+app.listen(PORT, () => {
+  log('INFO', `Server running on port ${PORT}`);
+  log('INFO', `Auth: ${USER_PASSWORD ? 'enabled' : 'disabled'} | Admin: ${ADMIN_PASSWORD ? 'enabled' : 'disabled'}`);
+  log('INFO', `Server key: ${serverConfig.apiKey ? `configured (${serverConfig.provider})` : 'none'}`);
 });

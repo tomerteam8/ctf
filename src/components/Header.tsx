@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import type { Difficulty } from '../data/types';
-import { LLM_PROVIDER, LLM_NEEDS_KEY } from '../services/llm';
+import { LLM_NEEDS_KEY } from '../services/llm';
 import type { AppView } from '../App';
 import { useIsMobile, HEADER_H_DESKTOP, HEADER_H_MOBILE } from '../hooks/useIsMobile';
+import { useAuthStore } from '../store/authStore';
+import AdminPanel from './AdminPanel';
 
 const st = {
   bar: {
@@ -35,10 +37,13 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
   const [text, setText] = useState('');
   const resetGame = useGameStore((s) => s.resetGame);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
   const [keyInput, setKeyInput] = useState(apiKey);
   const [confirmReset, setConfirmReset] = useState(false);
   const isMobile = useIsMobile();
-  const headerH = isMobile ? HEADER_H_MOBILE : HEADER_H_DESKTOP;
+
+  const appConfig = useAuthStore((s) => s.appConfig);
+  const serverModeActive = !!appConfig?.hasServerKey;
 
   const discovered = Array.from(nodes.values()).filter((n) => n.discovered).length;
 
@@ -60,6 +65,9 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
   const diffColor = difficulty === 'easy' ? '#00ff88' : difficulty === 'normal' ? '#00f0ff' : '#ff3366';
   const diffBg = difficulty === 'easy' ? 'rgba(0,255,136,0.2)' : difficulty === 'normal' ? 'rgba(0,240,255,0.2)' : 'rgba(255,51,102,0.2)';
 
+  // Settings button is green if: server mode active OR local key is set OR no key needed
+  const settingsOk = serverModeActive || !LLM_NEEDS_KEY || !!apiKey;
+
   const diffBadge = (
     <span style={{
       padding: '3px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700,
@@ -76,12 +84,27 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
       title="Settings"
       style={{
         background: 'none',
-        border: `1px solid ${(!LLM_NEEDS_KEY || apiKey) ? 'rgba(0,255,136,0.3)' : 'rgba(255,51,102,0.3)'}`,
+        border: `1px solid ${settingsOk ? 'rgba(0,255,136,0.3)' : 'rgba(255,51,102,0.3)'}`,
         borderRadius: 8, padding: '6px 8px', cursor: 'pointer', fontSize: 16, lineHeight: 1,
-        color: (!LLM_NEEDS_KEY || apiKey) ? '#00ff88' : '#ff3366',
+        color: settingsOk ? '#00ff88' : '#ff3366',
       }}
     >
       ⚙
+    </button>
+  );
+
+  const adminBtn = (
+    <button
+      onClick={() => setShowAdmin(true)}
+      title="Admin Panel"
+      style={{
+        background: 'none',
+        border: '1px solid rgba(165,85,247,0.3)',
+        borderRadius: 8, padding: '6px 8px', cursor: 'pointer', fontSize: 14, lineHeight: 1,
+        color: '#a855f7',
+      }}
+    >
+      🔑
     </button>
   );
 
@@ -118,22 +141,22 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
 
   return (
     <>
-      <div style={{ ...st.bar, height: headerH }}>
+      <div style={{ ...st.bar, height: isMobile ? HEADER_H_MOBILE : HEADER_H_DESKTOP }}>
         {isMobile ? (
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            {/* Mobile Row 1: title + settings */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: HEADER_H_MOBILE / 2 }}>
               <span style={{ ...st.title, fontSize: 18 }}>{text}<span style={st.caret} /></span>
-              {settingsBtn}
+              <div style={{ display: 'flex', gap: 6 }}>
+                {adminBtn}
+                {settingsBtn}
+              </div>
             </div>
-            {/* Mobile Row 2: view toggle + difficulty badge */}
             <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px', height: HEADER_H_MOBILE / 2, borderTop: '1px solid rgba(42,58,92,0.6)', gap: 8 }}>
               {viewToggle}
               {diffBadge}
             </div>
           </div>
         ) : (
-          /* Desktop: single row */
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '100%', padding: '0 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center' }}>
               <span style={st.title}>{text}<span style={st.caret} /></span>
@@ -149,6 +172,7 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
                 <div style={st.dot('#ff3366', 0.6)} />
               </div>
               {diffBadge}
+              {adminBtn}
               {settingsBtn}
             </div>
           </div>
@@ -173,37 +197,50 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
             }}
           >
             <h3 style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', marginBottom: 4 }}>Settings</h3>
-            <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 16 }}>
-              {LLM_NEEDS_KEY
-                ? `Enter your ${LLM_PROVIDER === 'openai' ? 'OpenAI' : 'Anthropic'} API key to enable LLM-driven actions.`
-                : 'Using local Claude CLI — no API key needed.'}
-            </p>
-            {LLM_NEEDS_KEY && (
+
+            {/* API key section */}
+            {serverModeActive ? (
+              <div style={{
+                padding: '10px 14px', borderRadius: 8, marginBottom: 16,
+                background: 'rgba(0,255,136,0.05)', border: '1px solid rgba(0,255,136,0.2)',
+              }}>
+                <p style={{ fontSize: 12, color: '#00ff88', fontWeight: 700, margin: 0 }}>
+                  ● Server mode active
+                </p>
+                <p style={{ fontSize: 11, color: '#94a3b8', margin: '4px 0 0' }}>
+                  LLM calls are handled by the server. No API key needed.
+                </p>
+              </div>
+            ) : (
               <>
-                <label style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                  {LLM_PROVIDER === 'openai' ? 'OpenAI' : 'Anthropic'} API Key
-                </label>
-                <input
-                  type="password"
-                  value={keyInput}
-                  onChange={(e) => setKeyInput(e.target.value)}
-                  placeholder="sk-..."
-                  style={{
-                    width: '100%',
-                    marginTop: 6,
-                    padding: '10px 14px',
-                    borderRadius: 8,
-                    border: '1px solid #2a3a5c',
-                    background: 'rgba(10,14,23,0.8)',
-                    color: '#e2e8f0',
-                    fontSize: 13,
-                    fontFamily: 'monospace',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
+                <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 16 }}>
+                  {LLM_NEEDS_KEY
+                    ? 'Enter your API key to enable LLM-driven actions.'
+                    : 'Using local Claude CLI — no API key needed.'}
+                </p>
+                {LLM_NEEDS_KEY && (
+                  <>
+                    <label style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      API Key
+                    </label>
+                    <input
+                      type="password"
+                      value={keyInput}
+                      onChange={(e) => setKeyInput(e.target.value)}
+                      placeholder="sk-..."
+                      style={{
+                        width: '100%', marginTop: 6, padding: '10px 14px',
+                        borderRadius: 8, border: '1px solid #2a3a5c',
+                        background: 'rgba(10,14,23,0.8)', color: '#e2e8f0',
+                        fontSize: 13, fontFamily: 'monospace', outline: 'none',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </>
+                )}
               </>
             )}
+
             <label style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginTop: 16 }}>
               Difficulty
             </label>
@@ -216,17 +253,12 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
                     key={d}
                     onClick={() => setDifficulty(d)}
                     style={{
-                      flex: 1,
-                      padding: '8px 0',
-                      borderRadius: 8,
+                      flex: 1, padding: '8px 0', borderRadius: 8,
                       border: `1px solid ${active ? color : '#2a3a5c'}`,
                       background: active ? `${color}22` : 'rgba(17,24,39,0.8)',
                       color: active ? color : '#94a3b8',
-                      fontWeight: 700,
-                      fontSize: 11,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.1em',
-                      cursor: 'pointer',
+                      fontWeight: 700, fontSize: 11, textTransform: 'uppercase',
+                      letterSpacing: '0.1em', cursor: 'pointer',
                     }}
                   >
                     {d}
@@ -315,6 +347,9 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
           </div>
         </div>
       )}
+
+      {/* Admin panel */}
+      {showAdmin && <AdminPanel onClose={() => setShowAdmin(false)} />}
     </>
   );
 }

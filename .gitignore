@@ -26,3 +26,6 @@ Thumbs.db
 
 # TypeScript
 tsconfig.tsbuildinfo
+
+# Server config (contains API keys)
+server-config.json
