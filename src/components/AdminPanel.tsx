@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { adminLogin, getAdminConfig, saveAdminConfig, deleteAdminConfig, fetchAppConfig } from '../services/auth';
 import { useAuthStore } from '../store/authStore';
 import { useGameStore } from '../store/gameStore';
-import type { Difficulty } from '../data/types';
 
 const OPENAI_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'];
 const ANTHROPIC_MODELS = ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'];
@@ -42,7 +41,8 @@ export default function AdminPanel() {
   const setAppConfig = useAuthStore((s) => s.setAppConfig);
 
   const difficulty = useGameStore((s) => s.difficulty);
-  const setDifficulty = useGameStore((s) => s.setDifficulty);
+  const adminDifficulty = useGameStore((s) => s.adminDifficulty);
+  const setAdminDifficulty = useGameStore((s) => s.setAdminDifficulty);
   const resetGame = useGameStore((s) => s.resetGame);
   const revealAllNodes = useGameStore((s) => s.revealAllNodes);
   const quickUnlockStage1 = useGameStore((s) => s.quickUnlockStage1);
@@ -63,6 +63,57 @@ export default function AdminPanel() {
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = 'auto';
+    document.body.style.height = 'auto';
+    const root = document.getElementById('root');
+    if (root) root.style.height = 'auto';
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.height = '';
+      if (root) root.style.height = '';
+    };
+  }, []);
+
+  type UnlockStage = 'stage1' | 'stage2' | 'all';
+  type UnlockState = 'idle' | 'confirming' | 'done';
+
+  const UNLOCK_KEY = 'peter-admin-unlocks';
+  const loadUnlocks = (): Partial<Record<UnlockStage, UnlockState>> => {
+    try {
+      return JSON.parse(localStorage.getItem(UNLOCK_KEY) || '{}');
+    } catch { return {}; }
+  };
+  const [unlockStates, setUnlockStates] = useState<Record<UnlockStage, UnlockState>>(() => {
+    const saved = loadUnlocks();
+    return {
+      stage1: saved.stage1 ?? 'idle',
+      stage2: saved.stage2 ?? 'idle',
+      all: saved.all ?? 'idle',
+    };
+  });
+
+  const saveUnlocks = (next: Record<UnlockStage, UnlockState>) => {
+    localStorage.setItem(UNLOCK_KEY, JSON.stringify(next));
+    setUnlockStates(next);
+  };
+
+  const confirmUnlock = (stage: UnlockStage) => {
+    setUnlockStates((s) => ({ ...s, [stage]: 'confirming' }));
+  };
+  const cancelUnlock = (stage: UnlockStage) => {
+    setUnlockStates((s) => ({ ...s, [stage]: 'idle' }));
+  };
+  const executeUnlock = (stage: UnlockStage) => {
+    if (stage === 'stage1') quickUnlockStage1();
+    else if (stage === 'stage2') quickUnlockStage2();
+    else revealAllNodes();
+    saveUnlocks({ ...unlockStates, [stage]: 'done' });
+  };
+  const resetUnlocks = () => {
+    saveUnlocks({ stage1: 'idle', stage2: 'idle', all: 'idle' });
+  };
 
   useEffect(() => {
     if (phase === 'panel' && adminToken) {
@@ -331,21 +382,26 @@ export default function AdminPanel() {
               <h2 style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', margin: '0 0 12px' }}>Game Controls</h2>
 
               {/* Difficulty */}
-              <label style={{ ...labelStyle, marginTop: 0 }}>Difficulty</label>
-              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                {(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => {
-                  const active = difficulty === d;
-                  const color = d === 'easy' ? '#00ff88' : d === 'normal' ? '#00f0ff' : '#ff3366';
+              <label style={{ ...labelStyle, marginTop: 0 }}>Difficulty Control</label>
+              <p style={{ fontSize: 10, color: '#64748b', margin: '4px 0 6px', lineHeight: 1.5 }}>
+                {adminDifficulty === 'manual'
+                  ? 'Players can change difficulty freely.'
+                  : `Locked to ${adminDifficulty} — players cannot change it.`}
+              </p>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {(['easy', 'normal', 'hard', 'manual'] as const).map((d) => {
+                  const active = adminDifficulty === d;
+                  const color = d === 'easy' ? '#00ff88' : d === 'normal' ? '#00f0ff' : d === 'hard' ? '#ff3366' : '#94a3b8';
                   return (
                     <button
                       key={d}
-                      onClick={() => setDifficulty(d)}
+                      onClick={() => setAdminDifficulty(d)}
                       style={{
                         flex: 1, padding: '8px 0', borderRadius: 8, cursor: 'pointer',
                         border: `1px solid ${active ? color : '#2a3a5c'}`,
                         background: active ? `${color}22` : 'rgba(17,24,39,0.8)',
-                        color: active ? color : '#94a3b8',
-                        fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em',
+                        color: active ? color : '#64748b',
+                        fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em',
                       }}
                     >
                       {d}
@@ -353,29 +409,74 @@ export default function AdminPanel() {
                   );
                 })}
               </div>
+              {adminDifficulty !== 'manual' && (
+                <p style={{ fontSize: 10, color: '#64748b', marginTop: 6 }}>
+                  Current game difficulty: <span style={{ color: adminDifficulty === 'easy' ? '#00ff88' : adminDifficulty === 'normal' ? '#00f0ff' : '#ff3366', fontWeight: 700 }}>{difficulty}</span>
+                </p>
+              )}
 
               {/* Unlock shortcuts */}
               <label style={labelStyle}>Unlock Shortcuts</label>
-              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                <button
-                  onClick={quickUnlockStage1}
-                  style={{ ...btnBase, marginTop: 0, flex: 1, background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.3)', color: '#00ff88' }}
-                >
-                  Unlock Stage 1
-                </button>
-                <button
-                  onClick={quickUnlockStage2}
-                  style={{ ...btnBase, marginTop: 0, flex: 1, background: 'rgba(0,240,255,0.08)', border: '1px solid rgba(0,240,255,0.3)', color: '#00f0ff' }}
-                >
-                  Unlock Stage 2
-                </button>
-              </div>
-              <button
-                onClick={revealAllNodes}
-                style={{ ...btnBase, background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.3)', color: '#a855f7' }}
-              >
-                Reveal All Nodes
-              </button>
+              {(() => {
+                const stages: { key: UnlockStage; label: string; color: string }[] = [
+                  { key: 'stage1', label: 'Stage 1', color: '#00ff88' },
+                  { key: 'stage2', label: 'Stage 2', color: '#00f0ff' },
+                  { key: 'all',    label: 'All Nodes', color: '#a855f7' },
+                ];
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 6 }}>
+                    {stages.map(({ key, label, color }) => {
+                      const state = unlockStates[key];
+                      const done = state === 'done';
+                      const confirming = state === 'confirming';
+                      return (
+                        <div key={key}>
+                          {!confirming ? (
+                            <button
+                              onClick={() => !done && confirmUnlock(key)}
+                              style={{
+                                ...btnBase, marginTop: 0, width: '100%',
+                                background: done ? `${color}22` : 'rgba(17,24,39,0.8)',
+                                border: `1px solid ${done ? color : '#2a3a5c'}`,
+                                color: done ? color : '#94a3b8',
+                                cursor: done ? 'default' : 'pointer',
+                              }}
+                            >
+                              {done ? `✓ ${label} Unlocked` : `Unlock ${label}`}
+                            </button>
+                          ) : (
+                            <div style={{ border: `1px solid ${color}44`, borderRadius: 8, padding: '10px 12px', background: `${color}08` }}>
+                              <p style={{ fontSize: 11, color, textAlign: 'center', margin: '0 0 8px', fontWeight: 600 }}>
+                                Unlock {label} for all players?
+                              </p>
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                  onClick={() => cancelUnlock(key)}
+                                  style={{ ...btnBase, marginTop: 0, flex: 1, background: 'rgba(17,24,39,0.8)', border: '1px solid #2a3a5c', color: '#94a3b8' }}
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={() => executeUnlock(key)}
+                                  style={{ ...btnBase, marginTop: 0, flex: 1, background: `${color}22`, border: `1px solid ${color}66`, color }}
+                                >
+                                  Confirm
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <button
+                      onClick={resetUnlocks}
+                      style={{ ...btnBase, marginTop: 4, background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.3)', color: '#64748b' }}
+                    >
+                      Reset Unlock Options
+                    </button>
+                  </div>
+                );
+              })()}
 
               {/* Reset */}
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #2a3a5c' }}>
@@ -384,12 +485,12 @@ export default function AdminPanel() {
                     onClick={() => setConfirmReset(true)}
                     style={{ ...btnBase, marginTop: 0, background: 'rgba(255,51,102,0.08)', border: '1px solid rgba(255,51,102,0.3)', color: '#ff3366' }}
                   >
-                    ↺ Reset Game
+                    ↺ Reset Game Control
                   </button>
                 ) : (
                   <>
                     <p style={{ fontSize: 11, color: '#ff3366', textAlign: 'center', marginBottom: 8 }}>
-                      This will erase all progress. Settings are kept.
+                      This will erase all progress and reset all unlock stages.
                     </p>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button
@@ -399,7 +500,7 @@ export default function AdminPanel() {
                         Cancel
                       </button>
                       <button
-                        onClick={() => { resetGame(); setConfirmReset(false); }}
+                        onClick={() => { resetGame(); resetUnlocks(); setConfirmReset(false); }}
                         style={{ ...btnBase, marginTop: 0, flex: 1, background: 'rgba(255,51,102,0.2)', border: '1px solid rgba(255,51,102,0.5)', color: '#ff3366' }}
                       >
                         Confirm Reset

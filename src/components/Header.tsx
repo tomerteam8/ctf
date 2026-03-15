@@ -33,6 +33,8 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
   const setApiKey = useGameStore((s) => s.setApiKey);
   const difficulty = useGameStore((s) => s.difficulty);
   const setDifficulty = useGameStore((s) => s.setDifficulty);
+  const adminDifficulty = useGameStore((s) => s.adminDifficulty);
+  const difficultyLocked = adminDifficulty !== 'manual';
   const [text, setText] = useState('');
   const resetGame = useGameStore((s) => s.resetGame);
   const [showSettings, setShowSettings] = useState(false);
@@ -223,9 +225,9 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
             )}
 
             <label style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginTop: 16 }}>
-              Difficulty
+              Difficulty{difficultyLocked && <span style={{ color: '#64748b', marginLeft: 6, textTransform: 'none', letterSpacing: 0 }}>(locked by admin)</span>}
             </label>
-            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            <div style={{ display: 'flex', gap: 6, marginTop: 6, opacity: difficultyLocked ? 0.5 : 1 }}>
               {(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => {
                 const active = difficulty === d;
                 const color = d === 'easy' ? '#00ff88' : d === 'normal' ? '#00f0ff' : '#ff3366';
@@ -233,13 +235,14 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
                   <button
                     key={d}
                     onClick={() => setDifficulty(d)}
+                    disabled={difficultyLocked}
                     style={{
                       flex: 1, padding: '8px 0', borderRadius: 8,
                       border: `1px solid ${active ? color : '#2a3a5c'}`,
                       background: active ? `${color}22` : 'rgba(17,24,39,0.8)',
                       color: active ? color : '#94a3b8',
                       fontWeight: 700, fontSize: 11, textTransform: 'uppercase',
-                      letterSpacing: '0.1em', cursor: 'pointer',
+                      letterSpacing: '0.1em', cursor: difficultyLocked ? 'not-allowed' : 'pointer',
                     }}
                   >
                     {d}
