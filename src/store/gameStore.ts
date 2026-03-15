@@ -25,6 +25,7 @@ interface GameState {
   promptHistory: Record<string, PromptMessage[]>;
   pendingPromptText: string;
   difficulty: Difficulty;
+  adminDifficulty: Difficulty | 'manual';
   nodeFailures: Record<string, number>;
   capturedFlag: { id: string; value: string } | null;
   capturedFlags: string[];
@@ -40,6 +41,7 @@ interface GameState {
   setApiKey: (key: string) => void;
   setPendingPromptText: (text: string) => void;
   setDifficulty: (d: Difficulty) => void;
+  setAdminDifficulty: (d: Difficulty | 'manual') => void;
   clearFlag: () => void;
   revealAllNodes: () => void;
   quickUnlockStage1: () => void;
@@ -71,6 +73,7 @@ export const useGameStore = create<GameState>()(
   promptHistory: {},
   pendingPromptText: '',
   difficulty: (localStorage.getItem('peter-difficulty') as Difficulty) || 'normal',
+  adminDifficulty: (localStorage.getItem('peter-admin-difficulty') as Difficulty | 'manual') || 'manual',
   nodeFailures: {},
   capturedFlag: null,
   capturedFlags: [],
@@ -82,8 +85,19 @@ export const useGameStore = create<GameState>()(
   setPendingPromptText: (text) => set({ pendingPromptText: text }),
 
   setDifficulty: (d) => {
+    if (get().adminDifficulty !== 'manual') return; // locked by admin
     localStorage.setItem('peter-difficulty', d);
     set({ difficulty: d });
+  },
+
+  setAdminDifficulty: (d) => {
+    localStorage.setItem('peter-admin-difficulty', d);
+    if (d !== 'manual') {
+      localStorage.setItem('peter-difficulty', d);
+      set({ adminDifficulty: d, difficulty: d });
+    } else {
+      set({ adminDifficulty: d });
+    }
   },
 
   hasAsset: (type) => get().assets.some((a) => a.type === type),
@@ -454,7 +468,7 @@ export const useGameStore = create<GameState>()(
   },
 
   resetGame: () => {
-    const { apiKey, difficulty } = get();
+    const { apiKey, difficulty, adminDifficulty } = get();
     set({
       nodes: buildInitialNodes(),
       assets: [],
@@ -470,8 +484,15 @@ export const useGameStore = create<GameState>()(
       executingPrompt: '',
       pendingPromptText: '',
       apiKey,
-      difficulty,
+      difficulty: adminDifficulty !== 'manual' ? adminDifficulty : difficulty,
     });
+    // Re-apply any admin-unlocked stages
+    try {
+      const unlocks = JSON.parse(localStorage.getItem('peter-admin-unlocks') || '{}');
+      if (unlocks.stage1 === 'done') get().quickUnlockStage1();
+      if (unlocks.stage2 === 'done') get().quickUnlockStage2();
+      if (unlocks.all === 'done') get().revealAllNodes();
+    } catch { /* ignore */ }
   },
   }),
   {
