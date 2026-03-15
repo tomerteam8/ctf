@@ -8,11 +8,14 @@ import FlagModal from './components/FlagModal';
 import Header from './components/Header';
 import ParticleBackground from './components/ParticleBackground';
 import LoginModal from './components/LoginModal';
+import AdminPanel from './components/AdminPanel';
 import { useIsMobile, HEADER_H_DESKTOP, HEADER_H_MOBILE } from './hooks/useIsMobile';
 import { useAuthStore } from './store/authStore';
 import { fetchAppConfig } from './services/auth';
 
 export type AppView = 'graph' | 'network';
+
+const isAdminRoute = window.location.pathname.includes('/admin');
 
 export default function App() {
   const [view, setView] = useState<AppView>('graph');
@@ -21,15 +24,17 @@ export default function App() {
 
   const { token, appConfig, configLoaded, setAppConfig } = useAuthStore();
 
-  // Fetch server config on mount
   useEffect(() => {
     fetchAppConfig()
       .then(setAppConfig)
       .catch(() => {
-        // Server unreachable — set defaults so app still works in local mode
         setAppConfig({ requiresAuth: false, hasServerKey: false, provider: null, model: null });
       });
   }, [setAppConfig]);
+
+  if (isAdminRoute) {
+    return <AdminPanel />;
+  }
 
   const needsLogin = configLoaded && appConfig?.requiresAuth && !token;
 

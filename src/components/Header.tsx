@@ -5,7 +5,6 @@ import { LLM_NEEDS_KEY } from '../services/llm';
 import type { AppView } from '../App';
 import { useIsMobile, HEADER_H_DESKTOP, HEADER_H_MOBILE } from '../hooks/useIsMobile';
 import { useAuthStore } from '../store/authStore';
-import AdminPanel from './AdminPanel';
 
 const st = {
   bar: {
@@ -37,14 +36,12 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
   const [text, setText] = useState('');
   const resetGame = useGameStore((s) => s.resetGame);
   const [showSettings, setShowSettings] = useState(false);
-  const [showAdmin, setShowAdmin] = useState(false);
   const [keyInput, setKeyInput] = useState(apiKey);
   const [confirmReset, setConfirmReset] = useState(false);
   const isMobile = useIsMobile();
 
   const appConfig = useAuthStore((s) => s.appConfig);
   const serverModeActive = !!appConfig?.hasServerKey;
-  const isAdminUrl = window.location.pathname.includes('/admin');
 
   const discovered = Array.from(nodes.values()).filter((n) => n.discovered).length;
 
@@ -94,21 +91,6 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
     </button>
   );
 
-  const adminBtn = isAdminUrl ? (
-    <button
-      onClick={() => setShowAdmin(true)}
-      title="Admin Panel"
-      style={{
-        background: 'none',
-        border: '1px solid rgba(165,85,247,0.3)',
-        borderRadius: 8, padding: '6px 8px', cursor: 'pointer', fontSize: 14, lineHeight: 1,
-        color: '#a855f7',
-      }}
-    >
-      🔑
-    </button>
-  ) : null;
-
   const viewToggle = (
     <div style={{ display: 'flex', gap: 2, background: 'rgba(10,14,23,0.6)', borderRadius: 8, padding: 3, ...(isMobile && { flex: 1 }) }}>
       {(['graph', 'network'] as AppView[]).map((v) => {
@@ -148,7 +130,6 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: HEADER_H_MOBILE / 2 }}>
               <span style={{ ...st.title, fontSize: 18 }}>{text}<span style={st.caret} /></span>
               <div style={{ display: 'flex', gap: 6 }}>
-                {adminBtn}
                 {settingsBtn}
               </div>
             </div>
@@ -173,7 +154,6 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
                 <div style={st.dot('#ff3366', 0.6)} />
               </div>
               {diffBadge}
-              {adminBtn}
               {settingsBtn}
             </div>
           </div>
@@ -349,8 +329,6 @@ export default function Header({ view, onViewChange }: { view: AppView; onViewCh
         </div>
       )}
 
-      {/* Admin panel */}
-      {showAdmin && <AdminPanel onClose={() => setShowAdmin(false)} />}
     </>
   );
 }
