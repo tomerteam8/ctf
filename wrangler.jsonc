@@ -1,0 +1,21 @@
+{
+  // Cloudflare Worker configuration for PETER backend
+  // Deploy: npx wrangler deploy
+  // Dev:    npx wrangler dev
+  "name": "peter",
+  "main": "server.mjs",
+  "compatibility_date": "2025-03-15",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Environment variables — set secrets via: npx wrangler secret put <NAME>
+  // wrangler.jsonc is for non-sensitive config only
+  "vars": {
+    "NODE_ENV": "production"
+  },
+
+  // Serve the built frontend assets
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  }
+}
