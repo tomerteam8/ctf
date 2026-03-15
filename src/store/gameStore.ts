@@ -57,8 +57,6 @@ const buildInitialNodes = () => {
 
 const PERSIST_KEY = 'peter-game-progress';
 
-const CHEAT_STAGE1 = import.meta.env.VITE_CHEAT_STAGE1 || 'R1';
-const CHEAT_STAGE2 = import.meta.env.VITE_CHEAT_STAGE2 || 'R2';
 
 export const useGameStore = create<GameState>()(
   persist(
@@ -202,19 +200,6 @@ export const useGameStore = create<GameState>()(
   },
 
   executePrompt: async (nodeId, prompt) => {
-    if (prompt.trim() === 'R') {
-      get().revealAllNodes();
-      return;
-    }
-    if (prompt.trim() === CHEAT_STAGE1) {
-      get().quickUnlockStage1();
-      return;
-    }
-    if (prompt.trim() === CHEAT_STAGE2) {
-      get().quickUnlockStage2();
-      return;
-    }
-
     const state = get();
     const node = state.nodes.get(nodeId);
     if (!node) return;
