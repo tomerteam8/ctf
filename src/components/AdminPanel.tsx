@@ -1,26 +1,59 @@
 import { useState, useEffect } from 'react';
 import { adminLogin, getAdminConfig, saveAdminConfig, deleteAdminConfig, fetchAppConfig } from '../services/auth';
 import { useAuthStore } from '../store/authStore';
+import { useGameStore } from '../store/gameStore';
+import type { Difficulty } from '../data/types';
 
 const OPENAI_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'];
 const ANTHROPIC_MODELS = ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'];
 
-interface Props {
-  onClose: () => void;
-}
+const inputStyle: React.CSSProperties = {
+  display: 'block', width: '100%', marginTop: 6,
+  padding: '10px 14px', borderRadius: 8,
+  border: '1px solid #2a3a5c', background: 'rgba(10,14,23,0.8)',
+  color: '#e2e8f0', fontSize: 13, fontFamily: 'monospace',
+  outline: 'none', boxSizing: 'border-box',
+};
 
-export default function AdminPanel({ onClose }: Props) {
+const labelStyle: React.CSSProperties = {
+  fontSize: 11, color: '#94a3b8',
+  textTransform: 'uppercase', letterSpacing: '0.1em',
+  display: 'block', marginTop: 20,
+};
+
+const sectionStyle: React.CSSProperties = {
+  background: 'rgba(17,24,39,0.8)',
+  border: '1px solid #2a3a5c',
+  borderRadius: 12,
+  padding: 24,
+  marginBottom: 16,
+};
+
+const btnBase: React.CSSProperties = {
+  width: '100%', marginTop: 16, padding: '10px 0', borderRadius: 8,
+  fontWeight: 700, fontSize: 12, textTransform: 'uppercase',
+  letterSpacing: '0.1em', cursor: 'pointer',
+};
+
+export default function AdminPanel() {
   const adminToken = useAuthStore((s) => s.adminToken);
   const setAdminToken = useAuthStore((s) => s.setAdminToken);
   const adminLogout = useAuthStore((s) => s.adminLogout);
   const setAppConfig = useAuthStore((s) => s.setAppConfig);
+
+  const difficulty = useGameStore((s) => s.difficulty);
+  const setDifficulty = useGameStore((s) => s.setDifficulty);
+  const resetGame = useGameStore((s) => s.resetGame);
+  const revealAllNodes = useGameStore((s) => s.revealAllNodes);
+  const quickUnlockStage1 = useGameStore((s) => s.quickUnlockStage1);
+  const quickUnlockStage2 = useGameStore((s) => s.quickUnlockStage2);
 
   const [phase, setPhase] = useState<'login' | 'panel'>(adminToken ? 'panel' : 'login');
   const [adminPassword, setAdminPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
 
-  // Panel state
+  // Server config state
   const [currentConfig, setCurrentConfig] = useState<{ hasKey: boolean; provider: string | null; model: string | null } | null>(null);
   const [provider, setProvider] = useState<'openai' | 'anthropic'>('openai');
   const [model, setModel] = useState('');
@@ -29,8 +62,8 @@ export default function AdminPanel({ onClose }: Props) {
   const [saveSuccess, setSaveSuccess] = useState('');
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
-  // Load current config when entering panel
   useEffect(() => {
     if (phase === 'panel' && adminToken) {
       getAdminConfig(adminToken)
@@ -42,14 +75,13 @@ export default function AdminPanel({ onClose }: Props) {
           if (cfg.model) setModel(cfg.model);
         })
         .catch(() => {
-          // Token expired or invalid
           adminLogout();
           setPhase('login');
         });
     }
   }, [phase, adminToken, adminLogout]);
 
-  const handleAdminLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginLoading(true);
     setLoginError('');
@@ -66,7 +98,6 @@ export default function AdminPanel({ onClose }: Props) {
   };
 
   const handleSave = async () => {
-    // Require a key if server doesn't already have one
     if (!apiKey && !currentConfig?.hasKey) {
       setSaveError('API key is required');
       return;
@@ -75,16 +106,13 @@ export default function AdminPanel({ onClose }: Props) {
     setSaveError('');
     setSaveSuccess('');
     try {
-      // Server keeps existing key if apiKey is empty and one is already stored
       await saveAdminConfig(adminToken!, { apiKey, provider, model });
-      // Re-fetch to confirm
       const cfg = await getAdminConfig(adminToken!);
       setCurrentConfig(cfg);
       setApiKey('');
-      // Refresh app config so frontend knows server has a key now
       const appCfg = await fetchAppConfig();
       setAppConfig(appCfg);
-      setSaveSuccess('Configuration saved successfully');
+      setSaveSuccess('Configuration saved');
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Save failed');
     } finally {
@@ -102,10 +130,9 @@ export default function AdminPanel({ onClose }: Props) {
       setCurrentConfig(cfg);
       setApiKey('');
       setConfirmDelete(false);
-      // Refresh app config
       const appCfg = await fetchAppConfig();
       setAppConfig(appCfg);
-      setSaveSuccess('API key removed — users will use their own keys');
+      setSaveSuccess('API key removed');
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Delete failed');
     } finally {
@@ -115,230 +142,273 @@ export default function AdminPanel({ onClose }: Props) {
 
   const modelOptions = provider === 'openai' ? OPENAI_MODELS : ANTHROPIC_MODELS;
 
-  const inputStyle: React.CSSProperties = {
-    display: 'block', width: '100%', marginTop: 6,
-    padding: '10px 14px', borderRadius: 8,
-    border: '1px solid #2a3a5c', background: 'rgba(10,14,23,0.8)',
-    color: '#e2e8f0', fontSize: 13, fontFamily: 'monospace',
-    outline: 'none', boxSizing: 'border-box',
-  };
-
-  const labelStyle: React.CSSProperties = {
-    fontSize: 11, color: '#94a3b8',
-    textTransform: 'uppercase', letterSpacing: '0.1em',
-    display: 'block', marginTop: 16,
-  };
-
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-        backdropFilter: 'blur(4px)', zIndex: 200,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: '#111827', border: '1px solid #2a3a5c', borderRadius: 12,
-          padding: 24, maxWidth: 440, width: '90%',
-          maxHeight: '90vh', overflowY: 'auto',
-        }}
-      >
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', margin: 0 }}>
-            🔑 Admin Panel
-          </h3>
-          {phase === 'panel' && (
-            <button
-              onClick={() => { adminLogout(); setPhase('login'); }}
-              style={{
-                background: 'none', border: 'none', color: '#64748b',
-                fontSize: 11, cursor: 'pointer', textDecoration: 'underline',
-              }}
-            >
-              Logout admin
-            </button>
-          )}
-        </div>
+    <div style={{
+      minHeight: '100vh', background: '#0a0e17',
+      overflowY: 'auto',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '40px 16px',
+    }}>
+      {/* Header */}
+      <div style={{ width: '100%', maxWidth: 560, marginBottom: 24 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#00f0ff', letterSpacing: '0.3em', margin: 0 }}>
+          PETER<span style={{ display: 'inline-block', width: 2, height: 20, background: '#00f0ff', marginLeft: 4, verticalAlign: 'middle' }} />
+        </h1>
+        <p style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.15em', marginTop: 4 }}>
+          Admin Control Panel
+        </p>
+      </div>
 
-        {/* Admin login */}
+      <div style={{ width: '100%', maxWidth: 560 }}>
+
+        {/* Login */}
         {phase === 'login' && (
-          <form onSubmit={handleAdminLogin}>
-            <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 16 }}>
-              Enter the admin password to manage the server LLM configuration.
-            </p>
-            <label style={labelStyle}>Admin Password</label>
-            <input
-              type="password"
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              placeholder="Admin password"
-              autoFocus
-              style={inputStyle}
-            />
-            {loginError && (
-              <p style={{ fontSize: 11, color: '#ff3366', marginTop: 6 }}>{loginError}</p>
-            )}
-            <button
-              type="submit"
-              disabled={loginLoading || !adminPassword}
-              style={{
-                width: '100%', marginTop: 16, padding: '10px 0', borderRadius: 8,
-                background: 'rgba(0,240,255,0.15)', border: '1px solid rgba(0,240,255,0.3)',
-                color: '#00f0ff', fontWeight: 700, fontSize: 12,
-                textTransform: 'uppercase', letterSpacing: '0.1em',
-                cursor: loginLoading ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {loginLoading ? 'Authenticating…' : 'Login as Admin'}
-            </button>
-          </form>
+          <div style={sectionStyle}>
+            <h2 style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', margin: '0 0 12px' }}>Authentication</h2>
+            <form onSubmit={handleLogin}>
+              <label style={labelStyle}>Admin Password</label>
+              <input
+                type="password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                placeholder="Admin password"
+                autoFocus
+                style={inputStyle}
+              />
+              {loginError && <p style={{ fontSize: 11, color: '#ff3366', marginTop: 6 }}>{loginError}</p>}
+              <button
+                type="submit"
+                disabled={loginLoading || !adminPassword}
+                style={{
+                  ...btnBase,
+                  background: 'rgba(0,240,255,0.15)', border: '1px solid rgba(0,240,255,0.3)',
+                  color: '#00f0ff', opacity: !adminPassword ? 0.5 : 1,
+                }}
+              >
+                {loginLoading ? 'Authenticating…' : 'Login'}
+              </button>
+            </form>
+          </div>
         )}
 
-        {/* Config panel */}
+        {/* Panel */}
         {phase === 'panel' && (
           <>
-            {/* Current status */}
-            <div style={{
-              padding: '10px 14px', borderRadius: 8,
-              background: currentConfig?.hasKey ? 'rgba(0,255,136,0.05)' : 'rgba(255,51,102,0.05)',
-              border: `1px solid ${currentConfig?.hasKey ? 'rgba(0,255,136,0.2)' : 'rgba(255,51,102,0.2)'}`,
-              marginBottom: 16,
-            }}>
-              <span style={{ fontSize: 12, color: currentConfig?.hasKey ? '#00ff88' : '#ff3366', fontWeight: 700 }}>
-                {currentConfig?.hasKey
-                  ? `● Server key active — ${currentConfig.provider} / ${currentConfig.model || 'default model'}`
-                  : '○ No server key — users provide their own API keys'}
-              </span>
-            </div>
-
-            {/* Provider */}
-            <label style={labelStyle}>Provider</label>
-            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-              {(['openai', 'anthropic'] as const).map((p) => (
+            {/* Server Config */}
+            <div style={sectionStyle}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <h2 style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', margin: 0 }}>Server LLM Config</h2>
                 <button
-                  key={p}
-                  onClick={() => { setProvider(p); setModel(''); }}
-                  style={{
-                    flex: 1, padding: '8px 0', borderRadius: 8,
-                    border: `1px solid ${provider === p ? 'rgba(0,240,255,0.4)' : '#2a3a5c'}`,
-                    background: provider === p ? 'rgba(0,240,255,0.12)' : 'rgba(17,24,39,0.8)',
-                    color: provider === p ? '#00f0ff' : '#94a3b8',
-                    fontWeight: 700, fontSize: 11, textTransform: 'uppercase',
-                    letterSpacing: '0.05em', cursor: 'pointer',
-                  }}
+                  onClick={() => { adminLogout(); setPhase('login'); }}
+                  style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 11, cursor: 'pointer', textDecoration: 'underline' }}
                 >
-                  {p === 'openai' ? 'OpenAI' : 'Anthropic'}
+                  Logout
                 </button>
-              ))}
-            </div>
+              </div>
 
-            {/* Model */}
-            <label style={labelStyle}>Model</label>
-            <select
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              style={{ ...inputStyle, fontFamily: 'inherit', cursor: 'pointer' }}
-            >
-              <option value="">Default</option>
-              {modelOptions.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-              <option value="__custom">Custom…</option>
-            </select>
-            {model === '__custom' && (
-              <input
-                type="text"
-                placeholder="Enter model name"
-                onChange={(e) => setModel(e.target.value)}
-                style={{ ...inputStyle, marginTop: 6 }}
-              />
-            )}
+              {/* Status */}
+              <div style={{
+                padding: '8px 12px', borderRadius: 8, marginTop: 12,
+                background: currentConfig?.hasKey ? 'rgba(0,255,136,0.05)' : 'rgba(255,51,102,0.05)',
+                border: `1px solid ${currentConfig?.hasKey ? 'rgba(0,255,136,0.2)' : 'rgba(255,51,102,0.2)'}`,
+              }}>
+                <span style={{ fontSize: 12, color: currentConfig?.hasKey ? '#00ff88' : '#ff3366', fontWeight: 700 }}>
+                  {currentConfig?.hasKey
+                    ? `● Active — ${currentConfig.provider} / ${currentConfig.model || 'default model'}`
+                    : '○ No server key — users provide their own API keys'}
+                </span>
+              </div>
 
-            {/* API Key */}
-            <label style={labelStyle}>
-              API Key {currentConfig?.hasKey && <span style={{ color: '#64748b' }}>(leave blank to keep current)</span>}
-            </label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder={currentConfig?.hasKey ? '••••••••  (unchanged)' : 'sk-... or sk-ant-...'}
-              style={inputStyle}
-            />
-
-            {/* Messages */}
-            {saveError && <p style={{ fontSize: 11, color: '#ff3366', marginTop: 8 }}>{saveError}</p>}
-            {saveSuccess && <p style={{ fontSize: 11, color: '#00ff88', marginTop: 8 }}>{saveSuccess}</p>}
-
-            {/* Save button */}
-            <button
-              onClick={handleSave}
-              disabled={saving || (!apiKey && !currentConfig?.hasKey)}
-              style={{
-                width: '100%', marginTop: 16, padding: '10px 0', borderRadius: 8,
-                background: 'rgba(0,240,255,0.15)', border: '1px solid rgba(0,240,255,0.3)',
-                color: '#00f0ff', fontWeight: 700, fontSize: 12,
-                textTransform: 'uppercase', letterSpacing: '0.1em',
-                cursor: saving ? 'not-allowed' : 'pointer',
-                opacity: (!apiKey && !currentConfig?.hasKey) ? 0.5 : 1,
-              }}
-            >
-              {saving ? 'Saving…' : 'Save Configuration'}
-            </button>
-
-            {/* Delete key */}
-            {currentConfig?.hasKey && (
-              <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #2a3a5c' }}>
-                {!confirmDelete ? (
+              {/* Provider */}
+              <label style={labelStyle}>Provider</label>
+              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                {(['openai', 'anthropic'] as const).map((p) => (
                   <button
-                    onClick={() => setConfirmDelete(true)}
+                    key={p}
+                    onClick={() => { setProvider(p); setModel(''); }}
                     style={{
-                      width: '100%', padding: '10px 0', borderRadius: 8,
-                      background: 'rgba(255,51,102,0.08)', border: '1px solid rgba(255,51,102,0.3)',
-                      color: '#ff3366', fontWeight: 700, fontSize: 12,
-                      textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer',
+                      flex: 1, padding: '8px 0', borderRadius: 8, cursor: 'pointer',
+                      border: `1px solid ${provider === p ? 'rgba(0,240,255,0.4)' : '#2a3a5c'}`,
+                      background: provider === p ? 'rgba(0,240,255,0.12)' : 'rgba(17,24,39,0.8)',
+                      color: provider === p ? '#00f0ff' : '#94a3b8',
+                      fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em',
                     }}
                   >
-                    Delete API Key → Switch to Local Mode
+                    {p === 'openai' ? 'OpenAI' : 'Anthropic'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Model */}
+              <label style={labelStyle}>Model</label>
+              <select
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                style={{ ...inputStyle, fontFamily: 'inherit', cursor: 'pointer' }}
+              >
+                <option value="">Default</option>
+                {modelOptions.map((m) => <option key={m} value={m}>{m}</option>)}
+                <option value="__custom">Custom…</option>
+              </select>
+              {model === '__custom' && (
+                <input
+                  type="text"
+                  placeholder="Enter model name"
+                  onChange={(e) => setModel(e.target.value)}
+                  style={{ ...inputStyle, marginTop: 6 }}
+                />
+              )}
+
+              {/* API Key */}
+              <label style={labelStyle}>
+                API Key{currentConfig?.hasKey && <span style={{ color: '#64748b', marginLeft: 6 }}>(leave blank to keep current)</span>}
+              </label>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder={currentConfig?.hasKey ? '••••••••  (unchanged)' : 'sk-... or sk-ant-...'}
+                style={inputStyle}
+              />
+
+              {saveError && <p style={{ fontSize: 11, color: '#ff3366', marginTop: 8 }}>{saveError}</p>}
+              {saveSuccess && <p style={{ fontSize: 11, color: '#00ff88', marginTop: 8 }}>{saveSuccess}</p>}
+
+              <button
+                onClick={handleSave}
+                disabled={saving || (!apiKey && !currentConfig?.hasKey)}
+                style={{
+                  ...btnBase,
+                  background: 'rgba(0,240,255,0.15)', border: '1px solid rgba(0,240,255,0.3)',
+                  color: '#00f0ff', opacity: (!apiKey && !currentConfig?.hasKey) ? 0.5 : 1,
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {saving ? 'Saving…' : 'Save Configuration'}
+              </button>
+
+              {currentConfig?.hasKey && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #2a3a5c' }}>
+                  {!confirmDelete ? (
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      style={{
+                        ...btnBase, marginTop: 0,
+                        background: 'rgba(255,51,102,0.08)', border: '1px solid rgba(255,51,102,0.3)',
+                        color: '#ff3366',
+                      }}
+                    >
+                      Remove API Key
+                    </button>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: 11, color: '#ff3366', textAlign: 'center', marginBottom: 8 }}>
+                        Users will need to provide their own key.
+                      </p>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          onClick={() => setConfirmDelete(false)}
+                          style={{ ...btnBase, marginTop: 0, flex: 1, background: 'rgba(17,24,39,0.8)', border: '1px solid #2a3a5c', color: '#94a3b8' }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleDelete}
+                          disabled={saving}
+                          style={{ ...btnBase, marginTop: 0, flex: 1, background: 'rgba(255,51,102,0.2)', border: '1px solid rgba(255,51,102,0.5)', color: '#ff3366' }}
+                        >
+                          Confirm
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Game Controls */}
+            <div style={sectionStyle}>
+              <h2 style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', margin: '0 0 12px' }}>Game Controls</h2>
+
+              {/* Difficulty */}
+              <label style={{ ...labelStyle, marginTop: 0 }}>Difficulty</label>
+              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                {(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => {
+                  const active = difficulty === d;
+                  const color = d === 'easy' ? '#00ff88' : d === 'normal' ? '#00f0ff' : '#ff3366';
+                  return (
+                    <button
+                      key={d}
+                      onClick={() => setDifficulty(d)}
+                      style={{
+                        flex: 1, padding: '8px 0', borderRadius: 8, cursor: 'pointer',
+                        border: `1px solid ${active ? color : '#2a3a5c'}`,
+                        background: active ? `${color}22` : 'rgba(17,24,39,0.8)',
+                        color: active ? color : '#94a3b8',
+                        fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em',
+                      }}
+                    >
+                      {d}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Unlock shortcuts */}
+              <label style={labelStyle}>Unlock Shortcuts</label>
+              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                <button
+                  onClick={quickUnlockStage1}
+                  style={{ ...btnBase, marginTop: 0, flex: 1, background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.3)', color: '#00ff88' }}
+                >
+                  Unlock Stage 1
+                </button>
+                <button
+                  onClick={quickUnlockStage2}
+                  style={{ ...btnBase, marginTop: 0, flex: 1, background: 'rgba(0,240,255,0.08)', border: '1px solid rgba(0,240,255,0.3)', color: '#00f0ff' }}
+                >
+                  Unlock Stage 2
+                </button>
+              </div>
+              <button
+                onClick={revealAllNodes}
+                style={{ ...btnBase, background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.3)', color: '#a855f7' }}
+              >
+                Reveal All Nodes
+              </button>
+
+              {/* Reset */}
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #2a3a5c' }}>
+                {!confirmReset ? (
+                  <button
+                    onClick={() => setConfirmReset(true)}
+                    style={{ ...btnBase, marginTop: 0, background: 'rgba(255,51,102,0.08)', border: '1px solid rgba(255,51,102,0.3)', color: '#ff3366' }}
+                  >
+                    ↺ Reset Game
                   </button>
                 ) : (
-                  <div>
+                  <>
                     <p style={{ fontSize: 11, color: '#ff3366', textAlign: 'center', marginBottom: 8 }}>
-                      This will remove the server API key. Users will need to provide their own key.
+                      This will erase all progress. Settings are kept.
                     </p>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button
-                        onClick={() => setConfirmDelete(false)}
-                        style={{
-                          flex: 1, padding: '10px 0', borderRadius: 8,
-                          background: 'rgba(17,24,39,0.8)', border: '1px solid #2a3a5c',
-                          color: '#94a3b8', fontWeight: 700, fontSize: 12,
-                          textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer',
-                        }}
+                        onClick={() => setConfirmReset(false)}
+                        style={{ ...btnBase, marginTop: 0, flex: 1, background: 'rgba(17,24,39,0.8)', border: '1px solid #2a3a5c', color: '#94a3b8' }}
                       >
                         Cancel
                       </button>
                       <button
-                        onClick={handleDelete}
-                        disabled={saving}
-                        style={{
-                          flex: 1, padding: '10px 0', borderRadius: 8,
-                          background: 'rgba(255,51,102,0.2)', border: '1px solid rgba(255,51,102,0.5)',
-                          color: '#ff3366', fontWeight: 700, fontSize: 12,
-                          textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer',
-                        }}
+                        onClick={() => { resetGame(); setConfirmReset(false); }}
+                        style={{ ...btnBase, marginTop: 0, flex: 1, background: 'rgba(255,51,102,0.2)', border: '1px solid rgba(255,51,102,0.5)', color: '#ff3366' }}
                       >
-                        Confirm Delete
+                        Confirm Reset
                       </button>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
-            )}
+            </div>
           </>
         )}
       </div>
