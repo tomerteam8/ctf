@@ -281,8 +281,12 @@ export default {
         return json({ result }, 200, origin);
       }
 
-      // Fall through to static assets
-      return env.ASSETS.fetch(request);
+      // Fall through to static assets (SPA fallback: serve index.html for unknown paths)
+      const assetResponse = await env.ASSETS.fetch(request);
+      if (assetResponse.status === 404) {
+        return env.ASSETS.fetch(new Request(new URL('/', url).toString()));
+      }
+      return assetResponse;
 
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Internal server error';
