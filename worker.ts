@@ -33,6 +33,16 @@ interface ServerConfig {
   model: string | null;
 }
 
+interface GameState {
+  adminDifficulty: string;
+  unlocks: { stage1: string; stage2: string; all: string };
+}
+
+const DEFAULT_GAME_STATE: GameState = {
+  adminDifficulty: 'manual',
+  unlocks: { stage1: 'idle', stage2: 'idle', all: 'idle' },
+};
+
 // ── JWT (HS256 via Web Crypto) ───────────────────────────────────────────────
 
 function b64url(buf: ArrayBuffer): string {
@@ -182,6 +192,14 @@ export default {
     }
 
     try {
+      // GET /api/game-state — public, returns admin difficulty + unlock states
+      if (url.pathname === '/api/game-state' && request.method === 'GET') {
+        const state = env.CONFIG
+          ? ((await env.CONFIG.get('game-state', 'json') as GameState | null) ?? DEFAULT_GAME_STATE)
+          : DEFAULT_GAME_STATE;
+        return json(state, 200, origin);
+      }
+
       // GET /api/config
       if (url.pathname === '/api/config' && request.method === 'GET') {
         const cfg = await getConfig(env);
@@ -220,6 +238,26 @@ export default {
           return json({ error: 'Admin session expired' }, 401, origin);
         }
         if (adminPayload.role !== 'admin') return json({ error: 'Forbidden' }, 403, origin);
+
+        if (url.pathname === '/api/admin/game-state' && request.method === 'POST') {
+          if (!env.CONFIG) return json({ error: 'KV storage not configured' }, 503, origin);
+          const body = await request.json() as { adminDifficulty?: string; unlocks?: Record<string, string> };
+          const validDifficulties = ['easy', 'normal', 'hard', 'manual'];
+          if (!body.adminDifficulty || !validDifficulties.includes(body.adminDifficulty)) {
+            return json({ error: 'Invalid adminDifficulty' }, 400, origin);
+          }
+          const unlocks = body.unlocks ?? {};
+          const newState: GameState = {
+            adminDifficulty: body.adminDifficulty,
+            unlocks: {
+              stage1: unlocks.stage1 === 'done' ? 'done' : 'idle',
+              stage2: unlocks.stage2 === 'done' ? 'done' : 'idle',
+              all: unlocks.all === 'done' ? 'done' : 'idle',
+            },
+          };
+          await env.CONFIG.put('game-state', JSON.stringify(newState));
+          return json({ success: true }, 200, origin);
+        }
 
         if (url.pathname === '/api/admin/config') {
           if (request.method === 'GET') {

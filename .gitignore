@@ -30,3 +30,4 @@ tsconfig.tsbuildinfo
 
 # Server config (contains API keys)
 server-config.json
+server-game-state.json

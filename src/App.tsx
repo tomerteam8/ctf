@@ -11,7 +11,8 @@ import LoginModal from './components/LoginModal';
 import AdminPanel from './components/AdminPanel';
 import { useIsMobile, HEADER_H_DESKTOP, HEADER_H_MOBILE } from './hooks/useIsMobile';
 import { useAuthStore } from './store/authStore';
-import { fetchAppConfig } from './services/auth';
+import { useGameStore } from './store/gameStore';
+import { fetchAppConfig, fetchGameState } from './services/auth';
 
 export type AppView = 'graph' | 'network';
 
@@ -23,6 +24,7 @@ export default function App() {
   const headerH = isMobile ? HEADER_H_MOBILE : HEADER_H_DESKTOP;
 
   const { token, appConfig, configLoaded, setAppConfig } = useAuthStore();
+  const applyServerGameState = useGameStore((s) => s.applyServerGameState);
 
   useEffect(() => {
     fetchAppConfig()
@@ -30,7 +32,8 @@ export default function App() {
       .catch(() => {
         setAppConfig({ requiresAuth: false, hasServerKey: false, provider: null, model: null });
       });
-  }, [setAppConfig]);
+    fetchGameState().then(applyServerGameState);
+  }, [setAppConfig, applyServerGameState]);
 
   if (isAdminRoute) {
     return <AdminPanel />;

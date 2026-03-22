@@ -79,6 +79,41 @@ export async function deleteAdminConfig(adminToken: string): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete config');
 }
 
+export interface ServerGameState {
+  adminDifficulty: 'easy' | 'normal' | 'hard' | 'manual';
+  unlocks: { stage1: 'idle' | 'done'; stage2: 'idle' | 'done'; all: 'idle' | 'done' };
+}
+
+const DEFAULT_SERVER_GAME_STATE: ServerGameState = {
+  adminDifficulty: 'manual',
+  unlocks: { stage1: 'idle', stage2: 'idle', all: 'idle' },
+};
+
+export async function fetchGameState(): Promise<ServerGameState> {
+  try {
+    const res = await fetch('/api/game-state');
+    if (!res.ok) return DEFAULT_SERVER_GAME_STATE;
+    return res.json();
+  } catch {
+    return DEFAULT_SERVER_GAME_STATE;
+  }
+}
+
+export async function saveAdminGameState(adminToken: string, state: ServerGameState): Promise<void> {
+  const res = await fetch('/api/admin/game-state', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${adminToken}`,
+    },
+    body: JSON.stringify(state),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error || 'Failed to save game state');
+  }
+}
+
 export async function sendPromptToServer(
   token: string | null,
   systemPrompt: string,
