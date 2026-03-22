@@ -2,7 +2,14 @@ export type Difficulty = 'easy' | 'normal' | 'hard';
 export type NodeType = 'internet_server' | 'web_page' | 'database' | 'api' | 'network';
 export type NodeStatus = 'locked' | 'available' | 'completed';
 export type ActionCategory = 'recon' | 'exploit' | 'enumeration' | 'analysis';
-export type AssetType = 'api_key' | 'credentials' | 'db_credentials' | 'logic_flaw' | 'token' | 'certificate';
+export type AssetType = 'api_key' | 'credentials' | 'db_credentials' | 'logic_flaw' | 'token' | 'certificate' | 'admin_password';
+
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  discoveredAt: string;
+}
 
 export interface Action {
   id: string;
@@ -11,12 +18,31 @@ export interface Action {
   requiredAssets: AssetType[];
   revealsNodes: string[];
   revealsAssets?: { type: AssetType; name: string; value: string }[];
+  revealsAchievements?: { name: string; description: string }[];
   category: ActionCategory;
+  showAsHint?: boolean;
+  hint?: string;
+  easyHint?: string;
+}
+
+export type InfoSeverity = 'critical' | 'high' | 'medium' | 'info';
+
+export interface CveDetail {
+  id: string;       // e.g. 'CVE-2024-23897'
+  cvss: number;     // CVSS base score
+  kev: boolean;     // In CISA KEV catalog
+  summary: string;  // Short description
+}
+
+export interface ServiceDetail {
+  label: string;
+  value: string;
+  severity?: InfoSeverity;
 }
 
 export interface PentestNode {
   id: string;
-  parentId: string | null;
+  parentId: string | string[] | null;
   title: string;
   data: string;
   baseUrl: string;
@@ -24,6 +50,35 @@ export interface PentestNode {
   possibleActions: Action[];
   discovered: boolean;
   status: NodeStatus;
+  serviceInfo?: ServiceDetail[];
+  cves?: CveDetail[];
+  ring?: number;
+  ip?: string;
+  port?: string;
+  zone?: string;
+}
+
+export interface NetworkDevice {
+  id: string;
+  label: string;
+  ip: string;
+  port?: string;
+  ring: number;
+  zone: string;
+  color: string;
+  iconType: string;
+  services?: string;
+  kind: 'device' | 'firewall';
+  rules?: string[];
+  isTarget?: boolean;
+  hasCVE?: boolean;
+  cves?: CveDetail[];
+}
+
+export interface NetworkEdge {
+  id: string;
+  source: string;
+  target: string;
 }
 
 export interface Asset {
@@ -37,15 +92,18 @@ export interface Asset {
 
 export interface ActionResult {
   success: boolean;
+  guidance?: boolean;
   message: string;
   revealedNodes: string[];
   revealedAssets: Asset[];
   logs?: string[];
+  matchedActionId?: string | null;
 }
 
 export interface LLMResponse {
   matchedActionId: string | null;
   success: boolean;
+  guidance?: boolean;
   logs: string[];
   message: string;
   revealedNodes: string[];

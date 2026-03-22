@@ -13,6 +13,14 @@ const typeIcons: Record<string, string> = {
   network: '\u{1F5A7}',
 };
 
+const zoneColor: Record<string, string> = {
+  Perimeter: '#f59e0b',
+  Corporate: '#3b82f6',
+  'Dev/CI': '#fbbf24',
+  Development: '#fbbf24',
+  Management: '#a855f7',
+};
+
 const statusColors: Record<string, string> = {
   locked: 'border-red/50 bg-red/5',
   available: 'border-cyan/50 bg-cyan/5',
@@ -55,7 +63,7 @@ function NodeCard({ data }: NodeProps) {
           </span>
         </div>
         <div className="text-sm font-bold text-text-primary truncate">{node.title}</div>
-        <div className="text-[10px] text-text-secondary mt-1 truncate font-mono">{node.baseUrl}</div>
+        <div className="text-[10px] mt-1 truncate font-mono" style={{ color: zoneColor[node.zone ?? ''] || undefined }}>{node.baseUrl}</div>
         <div className="absolute -top-1 -right-1">
           <span
             className={`inline-block w-3 h-3 rounded-full ${

@@ -1,73 +1,94 @@
-# React + TypeScript + Vite
+# PETER — Pentest Quest
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An interactive cybersecurity CTF simulation where you probe a fictional e-commerce platform by typing free-form attack descriptions. An LLM evaluates each prompt against the selected target node, determining whether your described technique matches a viable attack vector. Chain together reconnaissance, SQL injection, SSRF, and command injection to achieve full system compromise.
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Node.js** 18+
+- **npm** (comes with Node.js)
+- One of the following LLM backends:
+  - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated (for local mode)
+  - An OpenAI API key
+  - An Anthropic API key
 
-## React Compiler
+## Quick Start
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+# Install dependencies
+npm install
 
-## Expanding the ESLint configuration
+# Copy the environment template
+cp .env.example .env
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Start the dev server
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The app runs at **http://localhost:5173**.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## LLM Configuration
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+The game needs an LLM to evaluate your attack prompts. Choose one of three providers by setting `VITE_LLM_PROVIDER` in your `.env` file.
+
+### Option 1: Local Claude CLI
+
+Uses the Claude Code CLI installed on your machine. No API key needed — authentication is handled by the CLI itself.
+
+```env
+VITE_LLM_PROVIDER=local
+```
+
+You must also run the local proxy server in a separate terminal:
+
+```bash
+node server.mjs
+```
+
+This starts a lightweight Express proxy on `http://127.0.0.1:3001` that spawns `claude -p` for each request. Logs are written to `server.log`.
+
+### Option 2: OpenAI API  (default)
+
+Calls the OpenAI API directly from the browser. Requires an API key.
+
+```env
+VITE_LLM_PROVIDER=openai
+VITE_LLM_MODEL=gpt-4o-mini        # optional, this is the default
+```
+
+After starting the app, click the gear icon in the header and enter your OpenAI API key. The key is stored in your browser's localStorage.
+
+### Option 3: Anthropic API
+
+Calls the Anthropic API directly from the browser. Requires an API key.
+
+```env
+VITE_LLM_PROVIDER=anthropic
+VITE_LLM_MODEL=claude-sonnet-4-20250514   # optional, this is the default
+```
+
+After starting the app, click the gear icon in the header and enter your Anthropic API key. The key is stored in your browser's localStorage.
+
+### Switching providers
+
+1. Edit `.env` to set `VITE_LLM_PROVIDER` (and optionally `VITE_LLM_MODEL`)
+2. Restart the dev server (`npm run dev`)
+3. For `openai` or `anthropic`, enter your API key in the in-app settings
+
+> **Note:** Environment variables prefixed with `VITE_` are baked into the client bundle at build time. You must restart the dev server after changing `.env`.
+
+## Difficulty Levels
+
+Select difficulty from the dropdown in the header.
+
+| Level  | LLM Matching | Asset Guard | Hints |
+|--------|-------------|-------------|-------|
+| Easy   | Loose — vague prompts accepted | Skipped | Always visible |
+| Normal | Moderate — clear technique description needed | Must name asset | After 3 failures |
+| Hard   | Strict — exact technique/tool required | Must include asset value | Never shown |
+
+## Build
+
+```bash
+npm run build      # TypeScript check + Vite production build → dist/
+npm run preview    # Preview the production build locally
 ```

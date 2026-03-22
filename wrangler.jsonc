@@ -1,0 +1,32 @@
+{
+	// Cloudflare Worker configuration for PETER backend
+	// Deploy: npx wrangler deploy
+	// Dev:    npx wrangler dev
+	"name": "ctf",
+	"main": "worker.ts",
+	"compatibility_date": "2025-03-15",
+	// Secrets (set via: npx wrangler secret put <NAME>)
+	//   USER_PASSWORD   — if set, users must log in
+	//   ADMIN_PASSWORD  — required for admin panel
+	//   JWT_SECRET      — JWT signing secret
+	//   API_KEY         — fallback LLM API key (if no KV / admin panel not used)
+	// Optional: non-sensitive env vars
+	"vars": {
+		"LLM_PROVIDER": "openai",
+		"LLM_MODEL": "gpt-4o-mini"
+	},
+	// KV namespace for runtime admin config (API key, provider, model)
+	// Create with: npx wrangler kv namespace create CONFIG
+	// Then replace the id below with the returned id.
+	"kv_namespaces": [
+		{
+			"binding": "CONFIG",
+			"id": "6efd8657419e4871890ca6367e33680a"
+		}
+	],
+	// Serve the built frontend assets
+	"assets": {
+		"directory": "./dist",
+		"binding": "ASSETS"
+	}
+}

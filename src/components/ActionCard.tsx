@@ -8,12 +8,16 @@ const catColor: Record<string, string> = {
 export default function ActionCard({
   action,
   onClickHint,
+  difficulty,
 }: {
   action: Action;
-  nodeId: string;
   onClickHint: (text: string) => void;
+  difficulty?: string;
 }) {
   const color = catColor[action.category] || '#00f0ff';
+  const hintText = difficulty === 'easy'
+    ? (action.easyHint || action.hint || action.name)
+    : (action.hint || action.name);
 
   return (
     <motion.button
@@ -21,7 +25,7 @@ export default function ActionCard({
       animate={{ x: 0, opacity: 1 }}
       whileHover={{ scale: 1.03 }}
       whileTap={{ scale: 0.97 }}
-      onClick={() => onClickHint(action.name)}
+      onClick={() => onClickHint(hintText)}
       title={action.description}
       style={{
         display: 'inline-flex',
@@ -36,7 +40,7 @@ export default function ActionCard({
         cursor: 'pointer',
       }}
     >
-      <span style={{ fontSize: 12, fontWeight: 600, color }}>{action.name}</span>
+      <span style={{ fontSize: 12, fontWeight: 600, color }}>{hintText}</span>
       <span
         style={{
           fontSize: 9,

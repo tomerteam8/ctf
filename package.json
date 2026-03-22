@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "server": "node --env-file=.env server.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -12,14 +13,20 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
     "@xyflow/react": "^12.10.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "framer-motion": "^12.34.1",
+    "jsonwebtoken": "^9.0.2",
     "react": "^19.2.0",
+    "react-d3-tree": "^3.6.6",
     "react-dom": "^19.2.0",
     "tailwindcss": "^4.1.18",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260313.1",
     "@eslint/js": "^9.39.1",
+    "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

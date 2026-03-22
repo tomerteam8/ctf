@@ -12,6 +12,8 @@ dist/
 # Logs
 *.log
 npm-debug.log*
+server.log
+server-config.json
 
 # Editor
 .vscode/
@@ -25,3 +27,7 @@ Thumbs.db
 
 # TypeScript
 tsconfig.tsbuildinfo
+
+# Server config (contains API keys)
+server-config.json
+server-game-state.json
