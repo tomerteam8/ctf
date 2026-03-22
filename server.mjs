@@ -61,6 +61,30 @@ function saveConfig() {
 }
 
 // ---------------------------------------------------------------------------
+// Game state persistence (admin difficulty + unlock stages)
+// ---------------------------------------------------------------------------
+
+const GAME_STATE_FILE = join(__dirname, 'server-game-state.json');
+
+let gameState = {
+  adminDifficulty: 'manual',
+  unlocks: { stage1: 'idle', stage2: 'idle', all: 'idle' },
+};
+
+if (existsSync(GAME_STATE_FILE)) {
+  try {
+    gameState = JSON.parse(readFileSync(GAME_STATE_FILE, 'utf8'));
+    log('INFO', `Loaded game state: adminDifficulty=${gameState.adminDifficulty}`);
+  } catch (e) {
+    log('WARN', 'Failed to parse server-game-state.json, starting fresh');
+  }
+}
+
+function saveGameState() {
+  writeFileSync(GAME_STATE_FILE, JSON.stringify(gameState, null, 2));
+}
+
+// ---------------------------------------------------------------------------
 // Environment
 // ---------------------------------------------------------------------------
 
@@ -68,7 +92,12 @@ const USER_PASSWORD = process.env.USER_PASSWORD || null;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
 const JWT_SECRET = process.env.JWT_SECRET || randomBytes(32).toString('hex');
 const PORT = parseInt(process.env.PORT || '3001', 10);
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+const CORS_ORIGINS = new Set(
+  (process.env.CORS_ORIGIN || 'http://localhost:5173')
+    .split(',')
+    .map((o) => o.trim())
+    .concat(['http://localhost:5173', 'http://127.0.0.1:5173'])
+);
 const IS_PROD = process.env.NODE_ENV === 'production';
 
 if (!ADMIN_PASSWORD) {
@@ -235,7 +264,7 @@ const app = express();
 
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || origin === CORS_ORIGIN || origin === 'http://127.0.0.1:5173') {
+    if (!origin || CORS_ORIGINS.has(origin)) {
       cb(null, true);
     } else {
       cb(new Error(`CORS blocked: ${origin}`));
@@ -286,6 +315,16 @@ app.post('/api/auth/admin', (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Game state routes
+// ---------------------------------------------------------------------------
+
+// Public — returns current admin difficulty + unlock states
+app.get('/api/game-state', (req, res) => {
+  res.json(gameState);
+});
+
+// ---------------------------------------------------------------------------
 // Admin routes
 // ---------------------------------------------------------------------------
 
@@ -317,6 +356,35 @@ app.post('/api/admin/config', requireAdmin, (req, res) => {
   saveConfig();
   log('INFO', `Admin updated config: provider=${provider}, model=${model || 'default'}`);
   res.json({ success: true, provider, model: model || null });
+});
+
+// Set admin difficulty + unlock stages
+app.post('/api/admin/game-state', requireAdmin, (req, res) => {
+  const { adminDifficulty, unlocks } = req.body;
+  const validDifficulties = ['easy', 'normal', 'hard', 'manual'];
+  const validStates = ['idle', 'done'];
+  if (!adminDifficulty || !validDifficulties.includes(adminDifficulty)) {
+    return res.status(400).json({ error: 'Invalid adminDifficulty' });
+  }
+  if (!unlocks || typeof unlocks !== 'object') {
+    return res.status(400).json({ error: 'Invalid unlocks' });
+  }
+  for (const key of ['stage1', 'stage2', 'all']) {
+    if (unlocks[key] && !validStates.includes(unlocks[key])) {
+      return res.status(400).json({ error: `Invalid unlock state for ${key}` });
+    }
+  }
+  gameState = {
+    adminDifficulty,
+    unlocks: {
+      stage1: unlocks.stage1 || 'idle',
+      stage2: unlocks.stage2 || 'idle',
+      all: unlocks.all || 'idle',
+    },
+  };
+  saveGameState();
+  log('INFO', `Admin updated game state: difficulty=${adminDifficulty}`);
+  res.json({ success: true });
 });
 
 // Delete API key — return to local mode

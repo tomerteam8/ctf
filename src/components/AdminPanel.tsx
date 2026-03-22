@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { adminLogin, getAdminConfig, saveAdminConfig, deleteAdminConfig, fetchAppConfig } from '../services/auth';
+import { adminLogin, getAdminConfig, saveAdminConfig, deleteAdminConfig, fetchAppConfig, fetchGameState, saveAdminGameState } from '../services/auth';
 import { useAuthStore } from '../store/authStore';
 import { useGameStore } from '../store/gameStore';
+import type { Difficulty } from '../data/types';
 
 const OPENAI_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'];
 const ANTHROPIC_MODELS = ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'];
@@ -40,13 +41,11 @@ export default function AdminPanel() {
   const adminLogout = useAuthStore((s) => s.adminLogout);
   const setAppConfig = useAuthStore((s) => s.setAppConfig);
 
-  const difficulty = useGameStore((s) => s.difficulty);
-  const adminDifficulty = useGameStore((s) => s.adminDifficulty);
-  const setAdminDifficulty = useGameStore((s) => s.setAdminDifficulty);
   const resetGame = useGameStore((s) => s.resetGame);
   const revealAllNodes = useGameStore((s) => s.revealAllNodes);
   const quickUnlockStage1 = useGameStore((s) => s.quickUnlockStage1);
   const quickUnlockStage2 = useGameStore((s) => s.quickUnlockStage2);
+  const applyServerGameState = useGameStore((s) => s.applyServerGameState);
 
   const [phase, setPhase] = useState<'login' | 'panel'>(adminToken ? 'panel' : 'login');
   const [adminPassword, setAdminPassword] = useState('');
@@ -64,6 +63,15 @@ export default function AdminPanel() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
 
+  // Game state (server-side)
+  type UnlockStage = 'stage1' | 'stage2' | 'all';
+  type UnlockState = 'idle' | 'confirming' | 'done';
+  const [adminDifficulty, setAdminDifficultyLocal] = useState<Difficulty | 'manual'>('manual');
+  const [unlockStates, setUnlockStates] = useState<Record<UnlockStage, UnlockState>>({
+    stage1: 'idle', stage2: 'idle', all: 'idle',
+  });
+  const [gameStateSaving, setGameStateSaving] = useState(false);
+
   useEffect(() => {
     document.body.style.overflow = 'auto';
     document.body.style.height = 'auto';
@@ -76,27 +84,24 @@ export default function AdminPanel() {
     };
   }, []);
 
-  type UnlockStage = 'stage1' | 'stage2' | 'all';
-  type UnlockState = 'idle' | 'confirming' | 'done';
-
-  const UNLOCK_KEY = 'peter-admin-unlocks';
-  const loadUnlocks = (): Partial<Record<UnlockStage, UnlockState>> => {
+  const persistGameState = async (
+    newDifficulty: Difficulty | 'manual',
+    newUnlocks: Record<UnlockStage, UnlockState>,
+  ) => {
+    if (!adminToken) return;
+    setGameStateSaving(true);
     try {
-      return JSON.parse(localStorage.getItem(UNLOCK_KEY) || '{}');
-    } catch { return {}; }
-  };
-  const [unlockStates, setUnlockStates] = useState<Record<UnlockStage, UnlockState>>(() => {
-    const saved = loadUnlocks();
-    return {
-      stage1: saved.stage1 ?? 'idle',
-      stage2: saved.stage2 ?? 'idle',
-      all: saved.all ?? 'idle',
-    };
-  });
-
-  const saveUnlocks = (next: Record<UnlockStage, UnlockState>) => {
-    localStorage.setItem(UNLOCK_KEY, JSON.stringify(next));
-    setUnlockStates(next);
+      await saveAdminGameState(adminToken, {
+        adminDifficulty: newDifficulty,
+        unlocks: {
+          stage1: newUnlocks.stage1 === 'done' ? 'done' : 'idle',
+          stage2: newUnlocks.stage2 === 'done' ? 'done' : 'idle',
+          all: newUnlocks.all === 'done' ? 'done' : 'idle',
+        },
+      });
+    } catch { /* ignore */ } finally {
+      setGameStateSaving(false);
+    }
   };
 
   const confirmUnlock = (stage: UnlockStage) => {
@@ -105,14 +110,18 @@ export default function AdminPanel() {
   const cancelUnlock = (stage: UnlockStage) => {
     setUnlockStates((s) => ({ ...s, [stage]: 'idle' }));
   };
-  const executeUnlock = (stage: UnlockStage) => {
+  const executeUnlock = async (stage: UnlockStage) => {
     if (stage === 'stage1') quickUnlockStage1();
     else if (stage === 'stage2') quickUnlockStage2();
     else revealAllNodes();
-    saveUnlocks({ ...unlockStates, [stage]: 'done' });
+    const next = { ...unlockStates, [stage]: 'done' as UnlockState };
+    setUnlockStates(next);
+    await persistGameState(adminDifficulty, next);
   };
-  const resetUnlocks = () => {
-    saveUnlocks({ stage1: 'idle', stage2: 'idle', all: 'idle' });
+  const resetUnlocks = async () => {
+    const cleared = { stage1: 'idle' as UnlockState, stage2: 'idle' as UnlockState, all: 'idle' as UnlockState };
+    setUnlockStates(cleared);
+    await persistGameState(adminDifficulty, cleared);
   };
 
   useEffect(() => {
@@ -129,8 +138,17 @@ export default function AdminPanel() {
           adminLogout();
           setPhase('login');
         });
+      fetchGameState().then((state) => {
+        setAdminDifficultyLocal(state.adminDifficulty);
+        setUnlockStates({
+          stage1: (state.unlocks.stage1 as UnlockState) ?? 'idle',
+          stage2: (state.unlocks.stage2 as UnlockState) ?? 'idle',
+          all: (state.unlocks.all as UnlockState) ?? 'idle',
+        });
+        applyServerGameState(state);
+      });
     }
-  }, [phase, adminToken, adminLogout]);
+  }, [phase, adminToken, adminLogout, applyServerGameState]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -387,6 +405,7 @@ export default function AdminPanel() {
                 {adminDifficulty === 'manual'
                   ? 'Players can change difficulty freely.'
                   : `Locked to ${adminDifficulty} — players cannot change it.`}
+                {gameStateSaving && <span style={{ color: '#00f0ff', marginLeft: 6 }}>Saving…</span>}
               </p>
               <div style={{ display: 'flex', gap: 6 }}>
                 {(['easy', 'normal', 'hard', 'manual'] as const).map((d) => {
@@ -395,13 +414,23 @@ export default function AdminPanel() {
                   return (
                     <button
                       key={d}
-                      onClick={() => setAdminDifficulty(d)}
+                      disabled={gameStateSaving}
+                      onClick={async () => {
+                        setAdminDifficultyLocal(d);
+                        await persistGameState(d, unlockStates);
+                        applyServerGameState({ adminDifficulty: d, unlocks: {
+                          stage1: unlockStates.stage1 === 'done' ? 'done' : 'idle',
+                          stage2: unlockStates.stage2 === 'done' ? 'done' : 'idle',
+                          all: unlockStates.all === 'done' ? 'done' : 'idle',
+                        }});
+                      }}
                       style={{
-                        flex: 1, padding: '8px 0', borderRadius: 8, cursor: 'pointer',
+                        flex: 1, padding: '8px 0', borderRadius: 8, cursor: gameStateSaving ? 'not-allowed' : 'pointer',
                         border: `1px solid ${active ? color : '#2a3a5c'}`,
                         background: active ? `${color}22` : 'rgba(17,24,39,0.8)',
                         color: active ? color : '#64748b',
                         fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em',
+                        opacity: gameStateSaving ? 0.6 : 1,
                       }}
                     >
                       {d}
@@ -409,11 +438,6 @@ export default function AdminPanel() {
                   );
                 })}
               </div>
-              {adminDifficulty !== 'manual' && (
-                <p style={{ fontSize: 10, color: '#64748b', marginTop: 6 }}>
-                  Current game difficulty: <span style={{ color: adminDifficulty === 'easy' ? '#00ff88' : adminDifficulty === 'normal' ? '#00f0ff' : '#ff3366', fontWeight: 700 }}>{difficulty}</span>
-                </p>
-              )}
 
               {/* Unlock shortcuts */}
               <label style={labelStyle}>Unlock Shortcuts</label>
@@ -500,7 +524,7 @@ export default function AdminPanel() {
                         Cancel
                       </button>
                       <button
-                        onClick={() => { resetGame(); resetUnlocks(); setConfirmReset(false); }}
+                        onClick={async () => { resetGame(); await resetUnlocks(); setConfirmReset(false); }}
                         style={{ ...btnBase, marginTop: 0, flex: 1, background: 'rgba(255,51,102,0.2)', border: '1px solid rgba(255,51,102,0.5)', color: '#ff3366' }}
                       >
                         Confirm Reset
